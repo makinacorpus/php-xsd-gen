@@ -1,0 +1,12 @@
+/.buildpath
+/.php-cs-fixer.cache
+/.php-cs-fixer.php
+/.phpunit.cache/
+/.project
+/.settings/
+/composer.lock
+/phpstan.neon
+/phpunit.xml
+/tests/Generated/
+/tests/resources/private/
+/vendor/
