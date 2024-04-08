@@ -83,6 +83,10 @@ abstract class AbstractReader
         $matches = [];
         if (\preg_match_all('/xmlns:([a-z0-9_-]+)=("([^"]+)"|([^\s]+))/ims', $tempBuffer, $matches)) {
             foreach ($matches[1] as $index => $alias)  {
+                if ('xsd' === $alias) {
+                    // Ignore redefinition of the XSD schema.
+                    continue;
+                }
                 if (!$newContext) {
                     $newContext = $context->nest();
                 }
@@ -90,22 +94,6 @@ abstract class AbstractReader
                 $newContext->registerNamespace($alias, $namespace);
             }
         }
-
-        /*
-        foreach ($element->attributes as $attribute) {
-            \assert($attribute instanceof \DOMAttr);
-
-            $name = $attribute->name;
-
-            if (\str_starts_with($name, 'xmlns:')) {
-                if (!$newContext) {
-                    $newContext = $context->nest();
-                }
-
-                $newContext->registerNamespace(\substr($name, 6), (string) $element->getAttribute($name));
-            }
-        }
-         */
 
         return $newContext ?? $context;
     }
@@ -136,6 +124,17 @@ abstract class AbstractReader
     {
         if (null === ($value = $this->attribute($element, $name))) {
             $this->attributeMissing($element, $name);
+        }
+        return $value;
+    }
+
+    /**
+     * Attribute or die.
+     */
+    protected function attributeOdDie(\DOMElement $element, string $name): ?string
+    {
+        if (null === ($value = $this->attribute($element, $name))) {
+            throw new ReaderError(\sprintf("<%s> is missing the [%s] attribute", $element->tagName, $name));
         }
         return $value;
     }

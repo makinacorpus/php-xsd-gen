@@ -6,6 +6,9 @@ namespace MakinaCorpus\SoapGenerator\Reader;
 
 use MakinaCorpus\SoapGenerator\Error\ReaderError;
 use MakinaCorpus\SoapGenerator\Error\ResourceCouldNotBeFoundError;
+use MakinaCorpus\SoapGenerator\Type\TypeId;
+use MakinaCorpus\SoapGenerator\Type\AbstractType;
+use MakinaCorpus\SoapGenerator\Type\SimpleType;
 
 class ReaderContext
 {
@@ -30,9 +33,32 @@ class ReaderContext
     }
 
     /**
+     * Create type identifier.
+     */
+    public function createTypeId(string $name, ?string $namespace = null): TypeId
+    {
+        if (null === $namespace && ($pos = \strpos($name, ':'))) {
+            $namespace = \substr($name, 0, $pos);
+            $name = \substr($name, $pos + 1);
+        }
+
+        return new TypeId($name, $namespace ? $this->resolveNamespace($namespace) : $this->namespace);
+    }
+
+    /**
+     * Get full namespace name for the given alias.
+     */
+    public function resolveTypeId(TypeId $id): TypeId
+    {
+        $namespace = $this->resolveNamespace($id->namespace);
+
+        return $namespace !== $id->namespace ? new TypeId($id->name, $namespace) : $id;
+    }
+
+    /**
      * Set new type.
      */
-    public function setType(RemoteType $type): void
+    public function setType(AbstractType $type): void
     {
         $this->global->setType($type);
     }
@@ -40,13 +66,10 @@ class ReaderContext
     /**
      * Find an existing type.
      */
-    public function addScalarType(string $name, ?string $namespace, ?string $realType = null): RemoteType
+    public function addScalarType(TypeId $id, ?string $realType = null): SimpleType
     {
-        if (null !== $namespace) {
-            $namespace = $this->resolveNamespace($namespace);
-        }
-
-        $type = RemoteType::scalar($name, $namespace, $realType);
+        $id = $this->resolveTypeId($id);
+        $type = new SimpleType(id: $id, type: $realType ?? $id->name);
 
         $this->global->setType($type);
 
@@ -56,11 +79,13 @@ class ReaderContext
     /**
      * Find an existing type.
      */
-    public function findType(string $name, string $namespace): RemoteType
+    public function findType(TypeId $id): AbstractType
     {
-        $namespace = $this->resolveNamespace($namespace);
+        $id = $this->resolveTypeId($id);
 
-        return $this->global->findType($name, $namespace);
+        $this->import($id->namespace);
+
+        return $this->global->findType($id);
     }
 
     /**

@@ -18,3 +18,19 @@ Any type can be:
 
 Following WSDL configuration:
  - Endpoint calling code can be generated.
+
+# Usage
+
+@todo
+
+# Generated code alterators
+
+@todo
+
+# A word about generated code style
+
+Generated code will have the default `nikic/php-parser` pretty printer style,
+there is no way around that.
+
+Once generated, you can run your favorite CS fixer upon the generated code
+to format it to your liking.

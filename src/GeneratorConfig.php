@@ -67,14 +67,16 @@ class GeneratorConfig
         private readonly array $namespaceMap = [],
         /** @var array<string,string> */
         private readonly array $nameMap = [],
-        public readonly bool $errorWhenTypeOverride = false,
-        public readonly bool $ignoreMissingTypes = true,
-        public readonly bool $publicProperties = true,
-        public readonly bool $readonlyProperties = true,
-        public readonly bool $propertyGetters = true,
+        public readonly bool $arrayHydrator = true,
         public readonly bool $camelCaseProperties = true,
         public readonly bool $constructor = true,
-        public readonly bool $arrayHydrator = true,
+        public readonly bool $errorWhenTypeOverride = false,
+        public readonly bool $ignoreMissingTypes = true,
+        public readonly bool $propertyDefaults = true,
+        public readonly bool $propertyGetters = true,
+        public readonly bool $propertyPromotion = true,
+        public readonly bool $publicProperties = true,
+        public readonly bool $readonlyProperties = true,
         bool $propertySetters = false,
     ) {
         $this->defaultNamespace = $defaultNamespace ? \trim($defaultNamespace, '\\') : null;

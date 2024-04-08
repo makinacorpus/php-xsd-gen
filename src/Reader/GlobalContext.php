@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace MakinaCorpus\SoapGenerator\Reader;
 
-use MakinaCorpus\SoapGenerator\GeneratorConfig;
 use MakinaCorpus\SoapGenerator\Error\ReaderError;
+use MakinaCorpus\SoapGenerator\GeneratorConfig;
+use MakinaCorpus\SoapGenerator\Type\AbstractType;
+use MakinaCorpus\SoapGenerator\Type\SimpleType;
+use MakinaCorpus\SoapGenerator\Type\TypeId;
+use MakinaCorpus\SoapGenerator\Type\TypeStub;
 use MakinaCorpus\SoapGenerator\Writer\Writer;
 
 class GlobalContext implements ResourceLocator
@@ -55,11 +59,11 @@ class GlobalContext implements ResourceLocator
     /**
      * Set new type.
      */
-    public function setType(RemoteType $type): void
+    public function setType(AbstractType $type): void
     {
         // Prevent scalar types from being inserted more than once.
-        if ($type->scalar && $this->types->hasType($type->name, $type->namespace)) {
-            $this->types->getType($type->name, $type->namespace);
+        if ($type instanceof SimpleType && $this->types->hasType($type->id)) {
+            $this->types->getType($type->id);
         } else {
             $this->types->setType($type);
         }
@@ -68,14 +72,14 @@ class GlobalContext implements ResourceLocator
     /**
      * Find an existing type.
      */
-    public function findType(string $name, string $namespace): RemoteType
+    public function findType(TypeId $id): AbstractType
     {
-        if ($this->types->hasType($name, $namespace)) {
-            return $this->types->getType($name, $namespace);
+        if ($this->types->hasType($id)) {
+            return $this->types->getType($id);
         }
 
         // Return a type stub.
-        return RemoteType::stub($name, $namespace);
+        return new TypeStub($id);
     }
 
     #[\Override]
