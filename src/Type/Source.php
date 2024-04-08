@@ -10,7 +10,8 @@ class Source
         public readonly string $filename,
         public readonly int $line = 0,
         public readonly ?string $path = null,
-    ) {}
+    ) {
+    }
 
     public static function unknown(): self
     {

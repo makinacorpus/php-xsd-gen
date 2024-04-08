@@ -20,7 +20,8 @@ class ComplexTypeProperty
         public readonly ?int $maxOccur = null,
         public readonly bool $nullable = false,
         public readonly bool $shadowsParent = false,
-    ) {}
+    ) {
+    }
 
     /**
      * Set computed PHP target names.

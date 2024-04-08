@@ -82,7 +82,7 @@ abstract class AbstractReader
         $tempBuffer = $tempDoc->saveHTML();
         $matches = [];
         if (\preg_match_all('/xmlns:([a-z0-9_-]+)=("([^"]+)"|([^\s]+))/ims', $tempBuffer, $matches)) {
-            foreach ($matches[1] as $index => $alias)  {
+            foreach ($matches[1] as $index => $alias) {
                 if ('xsd' === $alias) {
                     // Ignore redefinition of the XSD schema.
                     continue;

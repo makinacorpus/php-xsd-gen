@@ -25,11 +25,11 @@ class Writer
      */
     public function writeAll(): void
     {
-        $context = new WriterContext($this->types,  $this->config);
+        $context = new WriterContext($this->types, $this->config);
 
         // First resolve all names.
         foreach ($this->types->getAllTypes() as $type) {
-            list ($phpNamespace, $phpLocalName) = $context->expandPhpTypeName($type->id);
+            list($phpNamespace, $phpLocalName) = $context->expandPhpTypeName($type->id);
 
             $type->setPhpName($phpLocalName, $phpNamespace);
 

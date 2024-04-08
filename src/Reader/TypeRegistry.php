@@ -13,6 +13,7 @@ use MakinaCorpus\SoapGenerator\Type\TypeId;
 class TypeRegistry
 {
     private GeneratorConfig $config;
+
     /** @var AbstractType[] */
     private array $types = [];
 
