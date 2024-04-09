@@ -6,11 +6,12 @@ namespace MakinaCorpus\SoapGenerator\Reader;
 
 use MakinaCorpus\SoapGenerator\Error\ReaderError;
 use MakinaCorpus\SoapGenerator\Error\ResourceCouldNotBeFoundError;
-use MakinaCorpus\SoapGenerator\Type\TypeId;
+use MakinaCorpus\SoapGenerator\Helper\Context;
 use MakinaCorpus\SoapGenerator\Type\AbstractType;
 use MakinaCorpus\SoapGenerator\Type\SimpleType;
+use MakinaCorpus\SoapGenerator\Type\TypeId;
 
-class ReaderContext
+class ReaderContext implements Context
 {
     private GlobalContext $global;
     private array $namespaceUriMap = [];
@@ -22,6 +23,24 @@ class ReaderContext
         private ?self $parent = null,
     ) {
         $this->global = $global ?? new GlobalContext();
+    }
+
+    #[\Override]
+    public function logInfo(string|\Stringable $message, array $context = []): void
+    {
+        $this->global->logInfo($message, $context);
+    }
+
+    #[\Override]
+    public function logWarn(string|\Stringable $message, array $context = []): void
+    {
+        $this->global->logWarn($message, $context);
+    }
+
+    #[\Override]
+    public function logErr(string|\Stringable $message, array $context = []): void
+    {
+        $this->global->logErr($message, $context);
     }
 
     /**
@@ -155,7 +174,7 @@ class ReaderContext
             $reader = new XsdReader($filename, $this);
             $reader->findAllTypes();
         } catch (ResourceCouldNotBeFoundError $e) {
-            \trigger_error($e->getMessage(), \E_USER_WARNING);
+            $this->logErr($e->getMessage());
         }
     }
 }

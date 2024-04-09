@@ -100,10 +100,12 @@ abstract class AbstractReader
 
     /**
      * Trigger warning.
+     * @deprecated
+     *   Use Context::logWarn() directly.
      */
     protected function warning(string $message): void
     {
-        \trigger_error($message, E_USER_WARNING);
+        $this->context->logWarn($message);
     }
 
     /**

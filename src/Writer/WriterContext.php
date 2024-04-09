@@ -5,22 +5,29 @@ declare(strict_types=1);
 namespace MakinaCorpus\SoapGenerator\Writer;
 
 use MakinaCorpus\SoapGenerator\GeneratorConfig;
+use MakinaCorpus\SoapGenerator\Helper\Context;
+use MakinaCorpus\SoapGenerator\Helper\ContextTrait;
 use MakinaCorpus\SoapGenerator\Reader\TypeRegistry;
 use MakinaCorpus\SoapGenerator\Type\AbstractType;
-use MakinaCorpus\SoapGenerator\Type\TypeId;
 use MakinaCorpus\SoapGenerator\Type\SimpleType;
+use MakinaCorpus\SoapGenerator\Type\TypeId;
+use Psr\Log\LoggerInterface;
 
-class WriterContext
+class WriterContext implements Context
 {
+    use ContextTrait;
+
     public readonly GeneratorConfig $config;
     private readonly TypeRegistry $types;
 
     public function __construct(
         ?TypeRegistry $types,
         ?GeneratorConfig $config = null,
+        ?LoggerInterface $logger = null,
     ) {
         $this->config = $config ?? new GeneratorConfig();
         $this->types = $types ?? new TypeRegistry();
+        $this->logger = $logger ?? $this->config->logger;
     }
 
     /**

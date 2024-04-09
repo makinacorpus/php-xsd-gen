@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace MakinaCorpus\SoapGenerator;
 
+use Psr\Log\LoggerInterface;
+
 /**
  * @todo
  *   - Default namespace
@@ -78,6 +80,7 @@ class GeneratorConfig
         public readonly bool $publicProperties = true,
         public readonly bool $readonlyProperties = true,
         bool $propertySetters = false,
+        public readonly ?LoggerInterface $logger = null,
     ) {
         $this->defaultNamespace = $defaultNamespace ? \trim($defaultNamespace, '\\') : null;
         $this->defaultDirectory = \rtrim($defaultDirectory, '/');

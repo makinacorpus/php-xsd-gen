@@ -4,16 +4,21 @@ declare(strict_types=1);
 
 namespace MakinaCorpus\SoapGenerator\Reader;
 
-use MakinaCorpus\SoapGenerator\Error\ReaderError;
 use MakinaCorpus\SoapGenerator\GeneratorConfig;
+use MakinaCorpus\SoapGenerator\Error\ReaderError;
+use MakinaCorpus\SoapGenerator\Helper\Context;
+use MakinaCorpus\SoapGenerator\Helper\ContextTrait;
 use MakinaCorpus\SoapGenerator\Type\AbstractType;
 use MakinaCorpus\SoapGenerator\Type\SimpleType;
 use MakinaCorpus\SoapGenerator\Type\TypeId;
 use MakinaCorpus\SoapGenerator\Type\TypeStub;
 use MakinaCorpus\SoapGenerator\Writer\Writer;
+use Psr\Log\LoggerInterface;
 
-class GlobalContext implements ResourceLocator
+class GlobalContext implements Context, ResourceLocator
 {
+    use ContextTrait;
+
     private readonly GeneratorConfig $config;
     private readonly TypeRegistry $types;
     private readonly ResourceLocator $resourceLocator;
@@ -24,9 +29,11 @@ class GlobalContext implements ResourceLocator
         ?GeneratorConfig $config = null,
         ?TypeRegistry $types = null,
         ?ResourceLocator $resourceLocator = null,
+        ?LoggerInterface $logger = null,
         array $imported = [],
     ) {
         $this->config = $config ?? new GeneratorConfig();
+        $this->logger = $logger ?? $this->config->logger;
         $this->imported = $imported;
         $this->types = $types ?? new TypeRegistry();
         $this->resourceLocator = $resourceLocator ?? new DefaultResourceLocator();

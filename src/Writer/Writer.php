@@ -74,7 +74,7 @@ class Writer
             if (!$this->config->ignoreMissingTypes) {
                 throw $e;
             }
-            \trigger_error(\sprintf("%s: skipping property, type is missing", $prop->toString()), E_USER_WARNING);
+            $context->logWarn('{prop}: skipping property, type is missing', ['prop' => $prop->toString()]);
 
             return;
         }

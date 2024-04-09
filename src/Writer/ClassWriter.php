@@ -53,7 +53,7 @@ class ClassWriter
                 if (!$context->config->ignoreMissingTypes) {
                     throw $e;
                 }
-                \trigger_error(\sprintf("%s: cannot inherit from %s : type is missing", $type->toString(), $type->extends->toString()), \E_USER_WARNING);
+                $context->logErr('{type}: cannot inherit from {parent}: type is missing', ['type' => $type->toString(), 'parent' => $type->extends->toString()]);
             }
         }
 
@@ -90,36 +90,29 @@ class ClassWriter
                 continue; // Property skipped by resolution.
             }
 
-            try {
-                $propName = $prop->getPhpName();
+            $propName = $prop->getPhpName();
 
-                $this->propertyRegister(
-                    $context,
-                    $type,
-                    $phpNs,
-                    $prop,
-                    $factory,
-                    $classStmt,
-                    $namespaceStmt,
-                    $ctorStmt,
-                );
+            $this->propertyRegister(
+                $context,
+                $type,
+                $phpNs,
+                $prop,
+                $factory,
+                $classStmt,
+                $namespaceStmt,
+                $ctorStmt,
+            );
 
-                if ($context->config->propertyGetters) {
-                    $lateClassStmts[] = $this->propertyGetter($context, $prop, $factory);
-                }
+            if ($context->config->propertyGetters) {
+                $lateClassStmts[] = $this->propertyGetter($context, $prop, $factory);
+            }
 
-                if ($context->config->propertySetters) {
-                    $lateClassStmts[] = $this->propertySetter($context, $prop, $factory);
-                }
+            if ($context->config->propertySetters) {
+                $lateClassStmts[] = $this->propertySetter($context, $prop, $factory);
+            }
 
-                if ($context->config->arrayHydrator) {
-                    $arrayConstructorArgs[$propName] = $this->propertyHydratorArgument($context, $prop, $factory, $classPhpType);
-                }
-            } catch (TypeDoesNotExistError $e) {
-                if (!$context->config->ignoreMissingTypes) {
-                    throw $e;
-                }
-                \trigger_error($e->getMessage(), \E_USER_WARNING);
+            if ($context->config->arrayHydrator) {
+                $arrayConstructorArgs[$propName] = $this->propertyHydratorArgument($context, $prop, $factory, $classPhpType);
             }
         }
 
