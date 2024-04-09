@@ -24,14 +24,14 @@ class TypeRegistry
 
     public function setType(AbstractType $type): void
     {
-        $key = $type->id->toString();
+        $key = $type->toString();
 
         if ($existing = ($this->types[$key] ?? null)) {
             if ($this->config->errorWhenTypeOverride) {
-                throw new ReaderError(\sprintf("%s: cannot override type", $type->id->toString()));
+                throw new ReaderError(\sprintf("%s: cannot override type", $type->toString()));
             }
             if (!$existing->equals($type)) {
-                throw new ReaderError(\sprintf("%s: type override diverges", $type->id->toString()));
+                throw new ReaderError(\sprintf("%s: type override diverges", $type->toString()));
             }
             return;
         }

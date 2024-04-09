@@ -12,7 +12,7 @@ abstract class AbstractType
     public readonly Source $source;
 
     // Computed properties during resolution.
-    private bool $resolved = false;
+    public bool $resolved = false;
     private ?string $phpNamespace = null;
     private ?string $phpLocalName = null;
 
@@ -26,9 +26,17 @@ abstract class AbstractType
     }
 
     /**
-     * Set computed PHP target names.
+     * Get string representation.
      */
-    public function setPhpName(string $phpLocalName, ?string $phpNamespace): void
+    public function toString(): string
+    {
+        return $this->id->toString();
+    }
+
+    /**
+     * Set target PHP names.
+     */
+    public function resolve(string $phpLocalName, ?string $phpNamespace): void
     {
         $this->resolved = true;
         $this->phpLocalName = $phpLocalName;
@@ -79,6 +87,6 @@ abstract class AbstractType
 
     protected function computeHash(): string
     {
-        return \sha1(\implode('#', \array_filter([$this->id->toString(), $this->extends?->toString(), ...$this->computeHashAdditions()])));
+        return \sha1(\implode('#', \array_filter([$this->toString(), $this->extends?->toString(), ...$this->computeHashAdditions()])));
     }
 }

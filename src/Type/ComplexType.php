@@ -22,7 +22,7 @@ class ComplexType extends AbstractType
     public function property(ComplexTypeProperty $property): void
     {
         if (\array_key_exists($property->name, $this->properties)) {
-            throw new ReaderError(\sprintf("Property override: %s[%s] already exists", $this->id->toString(), $property->name));
+            throw new ReaderError(\sprintf("%s: property already exists and cannot be overriden", $property->toString()));
         }
         $this->properties[$property->name] = $property;
         $this->reset();

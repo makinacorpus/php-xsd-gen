@@ -34,3 +34,15 @@ there is no way around that.
 
 Once generated, you can run your favorite CS fixer upon the generated code
 to format it to your liking.
+
+# Todolist
+
+ - Propagate <xsd:annotation> as PHP-doc
+ - Handle correctly PHP-doc on property vs constructor promoted property vs getter.
+ - Handle enum: option for generating either PHP enum, or class with constants
+ - Handle other simple types
+ - Make simple type user-pluggable
+ - Generate array hydrator dealing with sub-types.
+ - Separate fromArray() and hydrate()
+ - Write XML serializer
+ - Write XML deserializer

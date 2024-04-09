@@ -486,6 +486,7 @@ class XsdReader extends AbstractReader
 
                 $type->property(
                     new ComplexTypeProperty(
+                        parent: $type->id,
                         name: $name,
                         type: $propType->id,
                         collection: $collection,
