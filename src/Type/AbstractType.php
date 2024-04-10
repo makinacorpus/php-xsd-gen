@@ -9,7 +9,6 @@ use MakinaCorpus\SoapGenerator\Error\WriterError;
 abstract class AbstractType
 {
     private ?string $hash = null;
-    public readonly Source $source;
 
     // Computed properties during resolution.
     public bool $resolved = false;
@@ -18,11 +17,24 @@ abstract class AbstractType
 
     public function __construct(
         public readonly TypeId $id,
-        public readonly ?TypeId $extends = null,
-        public readonly ?string $annotation = null,
-        ?Source $source = null,
-    ) {
-        $this->source = $source ?? Source::unknown();
+        public ?TypeId $extends = null,
+        public ?string $annotation = null,
+    ) {}
+
+    /**
+     * Set inherit type.
+     */
+    public function extends(TypeId $extends): void
+    {
+        $this->extends = $extends;
+    }
+
+    /**
+     * Get string representation.
+     */
+    public function __toString(): string
+    {
+        return $this->toString();
     }
 
     /**

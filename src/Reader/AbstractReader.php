@@ -9,13 +9,10 @@ use MakinaCorpus\SoapGenerator\Error\ResourceCouldNotBeFoundError;
 
 abstract class AbstractReader
 {
-    protected \DOMDocument $document;
     private ReaderContext $context;
 
-    public function __construct(
-        private string $filename,
-        ?ReaderContext $context = null,
-    ) {
+    public function __construct(string $filename, ?ReaderContext $context = null)
+    {
         if (!\file_exists($filename)) {
             throw new ResourceCouldNotBeFoundError(\sprintf("%s: file does not exist", $filename));
         }
@@ -23,33 +20,78 @@ abstract class AbstractReader
             throw new ResourceCouldNotBeFoundError(\sprintf("%s: file cannot be read", $filename));
         }
 
-        $directory = \dirname($filename);
         if ($context) {
-            $this->context = $context->createCloneForDocument($directory);
+            $this->context = $context->createCloneForDocument($filename);
         } else {
-            $this->context = new ReaderContext(directory: $directory);
+            $this->context = new ReaderContext(filename: $filename);
         }
 
-        $this->document = new \DOMDocument();
-        if (!$this->document->load($filename, LIBXML_COMPACT | LIBXML_HTML_NODEFDTD | LIBXML_NOBLANKS | LIBXML_NOCDATA | LIBXML_NOERROR | LIBXML_NONET)) {
-            throw new ReaderError(\sprintf("%s: file could not be read as XML", $filename));
-        }
-
-        if ($this->document->documentElement) {
-            $this->processNamespaces($this->context, $this->document->documentElement);
-        }
+        $this->context->logInfo("Created reader for file '{file}'", ['file' => $filename]);
     }
 
     /**
-     * Get root context.
+     * Main execution handler.
      */
-    protected function getRootContext(): ReaderContext
+    public function execute()
     {
-        return $this->context;
+        $context = $this->context;
+        $context->logInfo("Executing file '{file}'", ['file' => $context->filename]);
+
+        $document = new \DOMDocument();
+
+        if (!$document->load($context->filename, LIBXML_COMPACT | LIBXML_HTML_NODEFDTD | LIBXML_NOBLANKS | LIBXML_NOCDATA | LIBXML_NOERROR | LIBXML_NONET)) {
+            throw new ReaderError(\sprintf("%s: file could not be read as XML", $context->filename));
+        }
+
+        if ($document->documentElement) {
+            $this->root($context);
+            $this->executeElement($context, $document->documentElement, null);
+        } else {
+            $context->logErr("{file}: document is empty.", ['file' => $context->filename]);
+        }
     }
 
     /**
-     * Read [xmlns:ALIAS=NAMESPACE] attributes on element.
+     * On document element.
+     */
+    protected abstract function root(ReaderContext $context): void;
+
+    /**
+     * Execute expectations on element and recurse.
+     */
+    private function executeElement(ReaderContext $context, \DOMElement $element, ?\DOMElement $parent = null): void
+    {
+        $context = $context = $this->createElementContext($context, $element);
+
+        if (!$expectations = $context->parent?->getAllExpectations()) {
+            return;
+        }
+
+        $executed = 0;
+        foreach ($expectations as $expectation) {
+            list ($match, $callback, $args) = $expectation;
+            if ($this->elementIs($element, $match)) {
+                $executed++;
+                $callback($context, $element, ...$args);
+            }
+        }
+
+        if ($executed) {
+            foreach ($element->childNodes as $child) {
+                if (!$child instanceof \DOMElement) {
+                    continue;
+                }
+                $this->executeElement($context, $child, $element);
+            }
+        } else if ($parent) {
+            $context->logWarn(\sprintf("<%s> is unexpected in '%s'", $element->tagName, $parent->getNodePath()));
+        } else {
+            $context->logWarn(\sprintf("<%s> is unexpected at root", $element->tagName));
+        }
+    }
+
+    /**
+     * @deprecated
      */
     protected function processNamespaces(ReaderContext $context, \DOMElement $element): ReaderContext
     {
@@ -57,6 +99,7 @@ abstract class AbstractReader
             return $context;
         }
 
+        // Find current element namespace if any.
         $currentNamespace = null;
         $newContext = null;
 
@@ -66,7 +109,52 @@ abstract class AbstractReader
             $currentNamespace = (string) $element->getAttribute('targetNamespace');
         }
         if ($currentNamespace) {
-            $newContext = $context->createChildWithNamespace($currentNamespace);
+            $newContext = $context->createChild($currentNamespace);
+        }
+
+        if ($aliases = $this->processNamespaceAttributes($context, $element)) {
+            if (!$newContext) {
+                $newContext = $context->createChild();
+            }
+            foreach ($aliases as $alias => $namespace) {
+                $newContext->registerNamespace($alias, $namespace);
+            }
+        }
+
+        return $newContext ?? $context;
+    }
+
+    /**
+     * Create context for element.
+     */
+    private function createElementContext(ReaderContext $context, \DOMElement $element): ReaderContext
+    {
+        // Find current element namespace if any.
+        $namespace = null;
+        if ($element->hasAttribute('targetNamespace')) {
+            $namespace = (string) $element->getAttribute('targetNamespace');
+        } else if ($element->hasAttribute('xmlns')) {
+            $namespace = (string) $element->getAttribute('targetNamespace');
+        }
+
+        $context = $context->createChild($namespace);
+
+        foreach ($this->processNamespaceAttributes($context, $element) as $alias => $namespace) {
+            $context->registerNamespace($alias, $namespace);
+        }
+
+        return $context;
+    }
+
+    /**
+     * Read [xmlns:ALIAS=NAMESPACE] attributes on element.
+     */
+    private function processNamespaceAttributes(ReaderContext $context, \DOMElement $element): array
+    {
+        $ret = [];
+
+        if (!$element->hasAttributes()) {
+            return $ret;
         }
 
         // @todo The only proper solution would be to use getAttributeNames()
@@ -80,42 +168,34 @@ abstract class AbstractReader
         \assert($tempNode instanceof \DOMNode);
         $tempDoc->appendChild($tempNode);
         $tempBuffer = $tempDoc->saveHTML();
+
         $matches = [];
         if (\preg_match_all('/xmlns:([a-z0-9_-]+)=("([^"]+)"|([^\s]+))/ims', $tempBuffer, $matches)) {
             foreach ($matches[1] as $index => $alias) {
+
+                // Ignore redefinition of the XSD schema.
                 if ('xsd' === $alias) {
-                    // Ignore redefinition of the XSD schema.
                     continue;
                 }
+
                 $namespace = $matches[3][$index] ?: $matches[4][$index];
+
+                // XMLSchema could be aliased, this is legal.
                 if ('http://www.w3.org/2001/XMLSchema' === $namespace) {
-                    // XMLSchema could be aliased, this is legal.
                     $namespace = 'xsd';
                 }
-                if (!$newContext) {
-                    $newContext = $context->createChildWithNamespace();
-                }
-                $newContext->registerNamespace($alias, $namespace);
+
+                $ret[$alias] = $namespace;
             }
         }
 
-        return $newContext ?? $context;
+        return $ret;
     }
 
     /**
-     * Trigger warning.
-     * @deprecated
-     *   Use Context::logWarn() directly.
+     * Get attribute value.
      */
-    protected function warning(string $message): void
-    {
-        $this->context->logWarn($message);
-    }
-
-    /**
-     * Missing attribute error/warning.
-     */
-    protected function attribute(\DOMElement $element, string $name): ?string
+    protected function attr(\DOMElement $element, string $name): ?string
     {
         if ($element->hasAttribute($name)) {
             return (string) $element->getAttribute($name);
@@ -126,10 +206,10 @@ abstract class AbstractReader
     /**
      * Missing attribute error/warning.
      */
-    protected function attributeRequired(\DOMElement $element, string $name): ?string
+    protected function attrRequired(\DOMElement $element, string $name): ?string
     {
-        if (null === ($value = $this->attribute($element, $name))) {
-            $this->attributeMissing($element, $name);
+        if (null === ($value = $this->attr($element, $name))) {
+            $this->context->logWarn(\sprintf('<%s> is missing attribute "%s"', $element->tagName, $name));
         }
         return $value;
     }
@@ -137,30 +217,12 @@ abstract class AbstractReader
     /**
      * Attribute or die.
      */
-    protected function attributeOdDie(\DOMElement $element, string $name): ?string
+    protected function attrOdDie(\DOMElement $element, string $name): ?string
     {
-        if (null === ($value = $this->attribute($element, $name))) {
+        if (null === ($value = $this->attr($element, $name))) {
             throw new ReaderError(\sprintf("<%s> is missing the [%s] attribute", $element->tagName, $name));
         }
         return $value;
-    }
-
-    /**
-     * Missing attribute error/warning.
-     */
-    protected function attributeMissing(\DOMElement $element, string $name): void
-    {
-        $this->warning(\sprintf('<%s> is missing attribute "%s"', $element->tagName, $name));
-    }
-
-    /**
-     * Unexpected element error/warning.
-     */
-    protected function elementUnexpected(\DOMNode $element, ?string $in = null): void
-    {
-        if ($element instanceof \DOMElement) {
-            $this->warning(\sprintf("<%s> is unexpected in %s", $element->tagName, $in ?? 'document'));
-        }
     }
 
     /**
@@ -179,15 +241,5 @@ abstract class AbstractReader
         }
 
         return (!$element->prefix || $element->prefix === $prefix) && $element->localName === $name;
-    }
-
-    /**
-     * Raise an exception if element does not match.
-     */
-    protected function elementCheck(\DOMElement $element, string $name, ?string $defaultPrefix = null): void
-    {
-        if (!$this->elementIs($element, $name)) {
-            throw new ReaderError(\sprintf("Expected <%s>, got <%s>", $name, $element->tagName));
-        }
     }
 }

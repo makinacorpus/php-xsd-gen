@@ -51,6 +51,14 @@ class ComplexTypeProperty
     /**
      * Get string representation.
      */
+    public function __toString(): string
+    {
+        return $this->toString();
+    }
+
+    /**
+     * Get string representation.
+     */
     public function toString(): string
     {
         return \sprintf('%s[%s]', $this->parent->toString(), $this->name);

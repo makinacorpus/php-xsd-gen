@@ -49,7 +49,7 @@ class Generator extends AbstractGenerator
             $context = new ReaderContext(global: $global);
 
             $reader = new WsdlReader($item->getFilename(), $context);
-            $reader->findAllTypes();
+            $reader->execute();
 
             $global->createWriter()->writeAll();
         }

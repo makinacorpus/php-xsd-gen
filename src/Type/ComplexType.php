@@ -12,13 +12,15 @@ class ComplexType extends AbstractType
         TypeId $id,
         ?TypeId $extends = null,
         ?string $annotation = null,
-        ?Source $source = null,
         public array $properties = [],
         public bool $abstract = false,
     ) {
-        parent::__construct($id, $extends, $annotation, $source);
+        parent::__construct($id, $extends, $annotation);
     }
 
+    /**
+     * Add property.
+     */
     public function property(ComplexTypeProperty $property): void
     {
         if (\array_key_exists($property->name, $this->properties)) {
@@ -28,13 +30,17 @@ class ComplexType extends AbstractType
         $this->reset();
     }
 
+    /**
+     * Does property exists.
+     */
     public function propertyExists(string $name): bool
     {
         return \array_key_exists($name, $this->properties);
     }
 
+    #[\Override]
     protected function computeHashAdditions(): array
     {
-        return \array_map($this->properties, fn (ComplexTypeProperty $prop) => $prop->getHashComponents());
+        return \array_map(fn (ComplexTypeProperty $prop) => $prop->getHashComponents(), $this->properties);
     }
 }

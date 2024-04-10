@@ -4,211 +4,104 @@ declare(strict_types=1);
 
 namespace MakinaCorpus\SoapGenerator\Reader;
 
-use MakinaCorpus\SoapGenerator\Type\AbstractType;
 use MakinaCorpus\SoapGenerator\Type\ComplexType;
 use MakinaCorpus\SoapGenerator\Type\ComplexTypeProperty;
-use MakinaCorpus\SoapGenerator\Type\SimpleType;
-use MakinaCorpus\SoapGenerator\Type\Source;
 
 class XsdReader extends AbstractReader
 {
-    public function findAllTypes(): void
+    #[\Override]
+    protected function root(ReaderContext $context): void
     {
-        $context = $this->getRootContext();
-
-        foreach ($this->document->childNodes as $child) {
-            if ($this->elementIs($child, 'wsdl:definitions')) {
-                $this->readDefinitions($context, $child);
-            } else if ($this->elementIs($child, 'xsd:schema')) {
-                $this->readSchema($context, $child);
-            } else if ($this->elementIs($child, 'xsd:types')) {
-                $this->readTypes($context, $child);
-            } else {
-                $this->elementUnexpected($child, 'document root');
-            }
-        }
+        $context
+            ->expect('wsdl:definitions', $this->definitions(...))
+            ->expect('wsdl:types', $this->types(...))
+            ->expect('xsd:import', $this->import(...))
+            ->expect('xsd:schema', $this->schema(...))
+            ->expect('xsd:types', $this->types(...))
+        ;
     }
 
-    /**
-     * Read an <xsd:import> element.
-     */
-    protected function readImport(ReaderContext $context, \DOMElement $element): void
+    protected function definitions(ReaderContext $context, \DOMElement $element): void
     {
-        $this->elementCheck($element, 'xsd:import');
+        $context
+            ->expect('wsdl:types', $this->types(...))
+            ->expect('xsd:import', $this->import(...))
+            ->expect('xsd:schema', $this->schema(...))
+            ->expect('xsd:types', $this->types(...))
+        ;
+    }
 
-        $context = $this->processNamespaces($context, $element);
+    protected function types(ReaderContext $context, \DOMElement $element): void
+    {
+        $context
+            ->expect('xsd:import', $this->import(...))
+            ->expect('xsd:schema', $this->schema(...))
+        ;
+    }
 
-        if (!$namespace = $this->attributeRequired($element, 'namespace')) {
+    protected function schema(ReaderContext $context, \DOMElement $element): void
+    {
+        $context
+            ->expect('xsd:complexType', $this->complexType(...))
+            ->expect('xsd:element', $this->element(...))
+            ->expect('xsd:import', $this->import(...))
+            ->expect('xsd:simpleType', $this->simpleType(...))
+        ;
+    }
+
+    protected function import(ReaderContext $context, \DOMElement $element): void
+    {
+        if (!$namespace = $this->attrRequired($element, 'namespace')) {
             return;
         }
-        $schemaLocation = $this->attribute($element, 'schemaLocation');
 
-        $context->import($namespace, $schemaLocation);
-    }
-
-    /**
-     * Read an <wsql:definitions> element.
-     */
-    protected function readDefinitions(ReaderContext $context, \DOMElement $element): void
-    {
-        $this->elementCheck($element, 'wsdl:definitions');
-
-        $context = $this->processNamespaces($context, $element);
-
-        foreach ($element->childNodes as $child) {
-            if ($this->elementIs($child, 'xsd:schema')) {
-                $this->readSchema($context, $child);
-            } else if ($this->elementIs($child, 'wsdl:types')) {
-                $this->readTypes($context, $child);
-            } else {
-                $this->elementUnexpected($child, '<wsdl:definitions>');
-            }
-        }
-    }
-
-    /**
-     * Read an <xsd:types> element.
-     */
-    protected function readTypes(ReaderContext $context, \DOMElement $element): void
-    {
-        $this->elementCheck($element, 'wsdl:types');
-
-        $context = $this->processNamespaces($context, $element);
-
-        foreach ($element->childNodes as $child) {
-            if ($this->elementIs($child, 'xsd:schema')) {
-                $this->readSchema($context, $child);
-            } else {
-                $this->elementUnexpected($child, '<xsd:types>');
-            }
-        }
-    }
-
-    /**
-     * Read an <xsd:schema> element.
-     */
-    protected function readSchema(ReaderContext $context, \DOMElement $element): void
-    {
-        $this->elementCheck($element, 'xsd:schema');
-
-        $context = $this->processNamespaces($context, $element);
-
-        // Read attributes from import (xmlns:NAMESPACE=URI).
-
-        foreach ($element->childNodes as $child) {
-            if ($child instanceof \DOMElement) {
-                if ($this->elementIs($child, 'xsd:element')) {
-                    $this->readElement($context, $child);
-                } else if ($this->elementIs($child, 'xsd:complexType')) {
-                    $this->readComplexType($context, $child);
-                } else if ($this->elementIs($child, 'xsd:simpleType')) {
-                    $this->readSimpleType($context, $child);
-                } else if ($this->elementIs($child, 'xsd:import')) {
-                    $this->readImport($context, $child);
-                } else {
-                    $this->elementUnexpected($child, '<xsd:schema>');
-                }
-            }
-        }
+        $context->import($namespace, $this->attr($element, 'schemaLocation'));
     }
 
     /**
      * Read a single type definition.
      */
-    protected function readElement(ReaderContext $context, \DOMElement $element, ?string $name = null): ?AbstractType
+    protected function element(ReaderContext $context, \DOMElement $element, ?string $name = null): void
     {
-        $this->elementCheck($element, 'xsd:element');
-
-        $context = $this->processNamespaces($context, $element);
-
         // <element> (type)
         //   [name=TYPE_NAME]
         //   <annotation>
         //     <documentation>TYPE_DESCRIPTION
         //   <complexType>
 
-        // Name can be null, it will crash later if we really miss it while
+        // Name can be null it will crash later if we really miss it while
         // parsing the complex type under if any.
-        $name ??= $this->attributeOdDie($element, 'name');
+        $name ??= $this->attrOdDie($element, 'name');
 
-        $ret = null;
-
-        foreach ($element->childNodes as $child) {
-            if ($child instanceof \DOMElement) {
-                if ($this->elementIs($child, 'xsd:annotation')) {
-                    \trigger_error("<xsd:annotation> is not implemented yet.", E_USER_WARNING);
-                } else if ($this->elementIs($child, 'xsd:complexType')) {
-                    $ret = $this->readComplexType($context, $child, $name);
-                } else if ($this->elementIs($child, 'xsd:simpleType')) {
-                    $ret = $this->readSimpleType($context, $child, $name);
-                } else {
-                    $this->elementUnexpected($child, '<xsd:element>');
-                }
-            }
-        }
-
-        return $ret;
+        $context
+            ->expect('xsd:annotation', fn () => null)
+            ->expect('xsd:complexType', $this->complexType(...), $name)
+            ->expect('xsd:simpleType', $this->simpleType(...), $name)
+        ;
     }
 
     /**
      * Read a single type definition.
      */
-    protected function readSimpleType(ReaderContext $context, \DOMElement $element, ?string $name = null): ?SimpleType
+    protected function simpleType(ReaderContext $context, \DOMElement $element, ?string $name = null): void
     {
-        $this->elementCheck($element, 'xsd:simpleType');
-
-        $context = $this->processNamespaces($context, $element);
-
         // <simpleType (name=TYPE_NAME)>
         //   <restriction>
         //     ...
 
-        $name ??= $this->attributeOdDie($element, 'name');
+        $name ??= $this->attrOdDie($element, 'name');
         $id = $context->createTypeId($name);
 
-        $ret = $context->addScalarType($id, 'string');
+        $context->addScalarType($id, 'string');
 
         // @todo Deal with simple types.
-
-        /*
-        $ret = null;
-
-        $found = 0;
-        foreach ($element->childNodes as $child) {
-            if ($child instanceof \DOMElement) {
-                if ($this->elementIs($child, 'xsd:complexContent')) {
-                    $found++;
-                    $ret = $this->readComplexContent($context, $child, $name);
-                } else if ($this->elementIs($child, 'xsd:sequence')) {
-                    $found++;
-                    $ret = new RemoteType($name, $context->namespace);
-                    $this->readComplexTypeSequence($context, $child, $ret);
-                    $context->setType($ret);
-                } else {
-                    $this->elementUnexpected($child, '<xsd:complexType>');
-                }
-            }
-        }
-
-        if (!$found) {
-            $this->warning(\sprintf("<xsd:complexType>: no type definition found"));
-        } else if (1 < $found) {
-            $this->warning(\sprintf("<xsd:complexType>: duplicate content found"));
-        }
-         */
-
-        return $ret;
     }
 
     /**
      * Read a single type definition.
      */
-    protected function readComplexType(ReaderContext $context, \DOMElement $element, ?string $name = null): ?ComplexType
+    protected function complexType(ReaderContext $context, \DOMElement $element, ?string $name = null): void
     {
-        $this->elementCheck($element, 'xsd:complexType');
-
-        $context = $this->processNamespaces($context, $element);
-
         // <complexType (name=TYPE_NAME)>
         //   <complexContent>
         //     <extension base="TYPE_NAME">
@@ -228,9 +121,6 @@ class XsdReader extends AbstractReader
         //     <element> (property)
         //       [name=PROP_NAME]
 
-        $name ??= $this->attributeOdDie($element, 'name');
-        $id = $context->createTypeId($name);
-
         // @todo handle abstract=BOOL attribute.
         // @todo handle annotation
         // @todo
@@ -239,179 +129,77 @@ class XsdReader extends AbstractReader
         //    for implementing this: parent properties need to be private
         //    and child properties need to shadow parent's
 
-        $ret = null;
+        $type = new ComplexType(
+            $context->createTypeId(
+                $name ?? $this->attrOdDie($element, 'name')
+            )
+        );
 
-        $found = 0;
-        foreach ($element->childNodes as $child) {
-            if ($child instanceof \DOMElement) {
-                if ($this->elementIs($child, 'xsd:complexContent')) {
-                    $found++;
-                    $ret = $this->readComplexContent($context, $child, $name);
-                } else if ($this->elementIs($child, 'xsd:sequence')) {
-                    $found++;
-                    $ret = new ComplexType(
-                        id: $id,
-                        source: Source::fromDomNode($element),
-                    );
-                    $this->readComplexTypeSequence($context, $child, $ret);
-                    $context->setType($ret);
-                } else {
-                    $this->elementUnexpected($child, '<xsd:complexType>');
-                }
-            }
-        }
+        $context->setType($type);
 
-        if (!$found) {
-            $this->warning(\sprintf("<xsd:complexType>: no type definition found"));
-        } else if (1 < $found) {
-            $this->warning(\sprintf("<xsd:complexType>: duplicate content found"));
-        }
-
-        return $ret;
+        $context
+            ->expect('xsd:complexContent', $this->complexContent(...),  $type)
+            ->expect('xsd:sequence', $this->sequence(...), $type)
+        ;
     }
 
-    protected function readComplexContent(ReaderContext $context, \DOMElement $element, string $name): ?ComplexType
+    protected function complexContent(ReaderContext $context, \DOMElement $element, ComplexType $type): void
     {
-        $this->elementCheck($element, 'xsd:complexContent');
-
-        $context = $this->processNamespaces($context, $element);
-
         // <complexContent>
         //   <extension base="TYPE_NAME">
         // OR
         // <complexContent>
         //   <restriction base="TYPE_NAME">
 
-        $ret = null;
-
-        $found = 0;
-        foreach ($element->childNodes as $child) {
-            if ($child instanceof \DOMElement) {
-                if ($this->elementIs($child, 'xsd:restriction')) {
-                    $found++;
-                    $ret = $this->readComplexTypeRestriction($context, $child, $name);
-                } else if ($this->elementIs($child, 'xsd:extension')) {
-                    $found++;
-                    $ret = $this->readComplexTypeExtension($context, $child, $name);
-                } else {
-                    $this->elementUnexpected($child, '<xsd:complexContent>');
-                }
-            }
-        }
-
-        if (!$found) {
-            $this->warning(\sprintf("<xsd:complexContent>: no type definition found"));
-        } else if (1 < $found) {
-            $this->warning(\sprintf("<xsd:complexContent>: duplicate content found"));
-        }
-
-        return $ret;
+        $context
+            ->expect('xsd:extension', $this->extension(...), $type)
+            ->expect('xsd:restriction', $this->restriction(...),  $type)
+        ;
     }
 
-    protected function readComplexTypeExtension(ReaderContext $context, \DOMElement $element, string $name): ?ComplexType
+    protected function extension(ReaderContext $context, \DOMElement $element, ComplexType $type): void
     {
-        $this->elementCheck($element, 'xsd:extension');
-
-        $context = $this->processNamespaces($context, $element);
-
         // <extension base="TYPE_NAME">
         //   <sequence>
 
-        $extendsId = $extends = null;
-
-        if ($typeName = $this->attribute($element, 'base')) {
+        if ($typeName = $this->attr($element, 'base')) {
             $extendsId = $context->createTypeId($typeName);
+
             if ('xsd' === $extendsId->namespace) {
-                $this->warning(\sprintf("<xsd:extension>: should not extend a scalar type"));
+                $context->logWarn("{type}: complex type cannot extend (via xsd:extension) a scalar type", ['type' => $type]);
             } else {
-                $extends = $context->getType($extendsId);
+                // Enforce type resolution.
+                $context->getType($extendsId);
+                $type->extends($extendsId);
             }
         }
 
-        $ret = null;
-
-        $found = 0;
-        foreach ($element->childNodes as $child) {
-            if ($child instanceof \DOMElement) {
-                if ($this->elementIs($child, 'xsd:sequence')) {
-                    $found++;
-                    $ret = new ComplexType(
-                        id: $context->createTypeId($name),
-                        extends: $extendsId,
-                        source: Source::fromDomNode($element),
-                    );
-                    $this->readComplexTypeSequence($context, $child, $ret);
-                    $context->setType($ret);
-                } else {
-                    $this->elementUnexpected($child, '<xsd:extension>');
-                }
-            }
-        }
-
-        if (!$found) {
-            $this->warning(\sprintf("<xsd:extension>: no type definition found"));
-        } else if (1 < $found) {
-            $this->warning(\sprintf("<xsd:extension>: duplicate content found"));
-        }
-
-        return $ret;
+        $context
+            ->expect('xsd:sequence', $this->sequence(...), $type)
+        ;
     }
 
-    protected function readComplexTypeRestriction(ReaderContext $context, \DOMElement $element, string $name): ?ComplexType
+    protected function restriction(ReaderContext $context, \DOMElement $element, ComplexType $type): void
     {
-        $this->elementCheck($element, 'xsd:restriction');
-
-        $context = $this->processNamespaces($context, $element);
-
-        // <extension base="TYPE_NAME">
-        //   <sequence>
-
-        $extendsId = $extends = null;
-
-        if ($typeName = $this->attribute($element, 'base')) {
+        if ($typeName = $this->attr($element, 'base')) {
             $extendsId = $context->createTypeId($typeName);
+
             if ('xsd' === $extendsId->namespace) {
-                $this->warning(\sprintf("<xsd:restriction>: should not extend a scalar type"));
+                $context->logWarn("{type}: complex type cannot extend (via xsd:restriction) a scalar type", ['type' => $type]);
             } else {
-                $extends = $context->getType($extendsId);
+                // Enforce type resolution.
+                $context->getType($extendsId);
+                $type->extends($extendsId);
             }
         }
 
-        $ret = null;
-
-        $found = 0;
-        foreach ($element->childNodes as $child) {
-            if ($child instanceof \DOMElement) {
-                if ($this->elementIs($child, 'xsd:sequence')) {
-                    $found++;
-                    $ret = new ComplexType(
-                        id: $context->createTypeId($name),
-                        extends: $extendsId,
-                        source: Source::fromDomNode($element),
-                    );
-                    $this->readComplexTypeSequence($context, $child, $ret);
-                    $context->setType($ret);
-                } else {
-                    $this->elementUnexpected($child, '<xsd:restriction>');
-                }
-            }
-        }
-
-        if (!$found) {
-            $this->warning(\sprintf("<xsd:restriction>: no type definition found"));
-        } else if (1 < $found) {
-            $this->warning(\sprintf("<xsd:restriction>: duplicate content found"));
-        }
-
-        return $ret;
+        $context
+            ->expect('xsd:sequence', $this->sequence(...), $type)
+        ;
     }
 
-    protected function readComplexTypeSequence(ReaderContext $context, \DOMElement $element, ComplexType $type): void
+    protected function sequence(ReaderContext $context, \DOMElement $element, ComplexType $type): void
     {
-        $this->elementCheck($element, 'xsd:sequence');
-
-        $context = $this->processNamespaces($context, $element);
-
         // <element> (property)
         //   [name=PROP_NAME]
         //   [type=TYPE_NAME]
@@ -424,49 +212,22 @@ class XsdReader extends AbstractReader
         // If [maxOccurs=1], then it's NOT a collection.
         // Else if [minOccurs] is present, it's a collection.
 
-        foreach ($element->childNodes as $child) {
-            if ($this->elementIs($child, 'xsd:element')) {
-                if (!$name = $this->attributeRequired($child, 'name')) {
-                    continue;
+        $context
+            ->expect('xsd:element', function (ReaderContext $context, \DOMElement $element) use ($type) {
+                if (!$name = $this->attrRequired($element, 'name')) {
+                    $context->logErr("{type}: found empty property", ['type' => $type]);
+
+                    return;
                 }
 
-                $subContext = $this->processNamespaces($context, $child);
-
-                $nullable = false;
-
-                if ($typeName = $this->attribute($child, 'type')) {
-                    $typeId = $subContext->createTypeId($typeName);
-                    if ('xsd' === $typeId->namespace) {
-                        $propType = $subContext->addScalarType($typeId);
-                    } else {
-                        $propType = $subContext->getType($typeId);
-                    }
-                } else {
-                    // When dealing with a complex type we need to name it using
-                    // a generated reproducible name. For now, simply take the
-                    // parent type name and suffix using the property name.
-                    // Since that types are unique in the same namespace, we
-                    // should not experience any conflicting names.
-                    $propType = $this->readElement($subContext, $child, $type->id->name . '_' . $name);
-                }
-                if (!$propType) {
-                    $this->warning(\sprintf("<xsd:element>: could not find type of property %s", $name));
-
-                    continue;
-                }
-
-                // "nillable" attribute is rather obsolete and should not be used.
-                // It is semantically equivalent to minOccurs=0.
-                if ('true' === $this->attribute($element, 'nillable')) {
-                    $nullable = true;
-                }
-
-                // Handle multiplicity.
+                // nillable attribute is obsolete schemantics and probably
+                // should not be used much. It is semantically equivalent
+                // to minOccurs="0".
+                $nullable = ('true' === $this->attr($element, 'nillable'));
                 $collection = false;
-                $max = $this->attribute($child, 'maxOccurs');
-                $min = $this->attribute($child, 'minOccurs');
+                $typeId = null;
 
-                if (null !== $max) {
+                if (null !== ($max = $this->attr($element, 'maxOccurs'))) {
                     if ("unbounded" === $max) {
                         $max = null;
                         $collection = true;
@@ -477,7 +238,8 @@ class XsdReader extends AbstractReader
                         }
                     }
                 }
-                if (null !== $min) {
+
+                if (null !== ($min = $this->attr($element, 'minOccurs'))) {
                     $min = (int) $min;
                     if ($min < 1) {
                         $nullable = true;
@@ -486,20 +248,41 @@ class XsdReader extends AbstractReader
                     }
                 }
 
+                if ($typeName = $this->attr($element, 'type')) {
+                    $typeId = $context->createTypeId($typeName);
+                    if ('xsd' === $typeId->namespace) {
+                        $context->addScalarType($typeId);
+                    } else {
+                        // Enforce type resolution.
+                        $context->getType($typeId);
+                    }
+                } else {
+                    // When dealing with a complex type we need to name it using
+                    // a generated reproducible name. For now, simply take the
+                    // parent type name and suffix using the property name.
+                    // Since that types are unique in the same namespace, we
+                    // should not experience any conflicting names.
+                    $typeId = $context->createTypeId($type->id->name . '_' . $name);
+
+                    $context
+                        ->expect('xsd:annotation', fn () => null)
+                        ->expect('xsd:complexType', $this->complexType(...), $typeId->name)
+                        ->expect('xsd:simpleType', $this->simpleType(...), $typeId->name)
+                    ;
+                }
+
                 $type->property(
                     new ComplexTypeProperty(
                         parent: $type->id,
                         name: $name,
-                        type: $propType->id,
+                        type: $typeId,
                         collection: $collection,
                         minOccur: $collection ? ($min ? $min : 0) : ($min ? 1 : 0),
                         maxOccur: $max,
                         nullable: $nullable,
                     ),
                 );
-            } else {
-                $this->elementUnexpected($child, '<xsd:sequence>');
-            }
-        }
+            })
+        ;
     }
 }

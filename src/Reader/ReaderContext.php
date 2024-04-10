@@ -13,14 +13,15 @@ use MakinaCorpus\SoapGenerator\Type\TypeId;
 
 class ReaderContext implements Context
 {
-    private GlobalContext $global;
+    private readonly GlobalContext $global;
     private array $namespaceUriMap = [];
+    private array $expectations = [];
 
     public function __construct(
         public readonly string $namespace = 'top_level',
-        public readonly ?string $directory = null,
+        public readonly ?self $parent = null,
+        public readonly ?string $filename = null,
         ?GlobalContext $global = null,
-        private ?self $parent = null,
     ) {
         $this->global = $global ?? new GlobalContext();
     }
@@ -41,6 +42,27 @@ class ReaderContext implements Context
     public function logErr(string|\Stringable $message, array $context = []): void
     {
         $this->global->logErr($message, $context);
+    }
+
+    /**
+     * Expect child element.
+     *
+     * @param (callable(ReaderContext,\DOMElement):void) $callback
+     */
+    public function expect(string $elementName, callable $callback, mixed ...$args): static
+    {
+        $this->expectations[] = [$elementName, $callback, $args];
+
+        return $this;
+    }
+
+    /**
+     * @internal
+     *  For AbstractReader usage only.
+     */
+    public function getAllExpectations(): array
+    {
+        return $this->expectations;
     }
 
     /**
@@ -138,9 +160,9 @@ class ReaderContext implements Context
         }
 
         try {
-            $filename = $this->global->findResource($namespace, null, $this->directory);
+            $filename = $this->global->findResource($namespace, null, \dirname($this->filename));
             $reader = new XsdReader($filename, $this);
-            $reader->findAllTypes();
+            $reader->execute();
         } catch (ResourceCouldNotBeFoundError $e) {
             $this->logErr($e->getMessage());
         }
@@ -149,10 +171,10 @@ class ReaderContext implements Context
     /**
      * Create a new context level.
      */
-    public function createChildWithNamespace(?string $namespace = null): self
+    public function createChild(?string $namespace = null): self
     {
         return new self(
-            directory: $this->directory,
+            filename: $this->filename,
             global: $this->global,
             namespace: $namespace ?? $this->namespace,
             parent: $this,
@@ -164,10 +186,10 @@ class ReaderContext implements Context
      *
      * @internal
      */
-    public function createCloneForDocument(?string $directory = null)
+    public function createCloneForDocument(?string $filename = null)
     {
         return new ReaderContext(
-            directory: $directory,
+            filename: $filename,
             global: $this->global,
         );
     }

@@ -10,9 +10,8 @@ class SimpleType extends AbstractType
         TypeId $id,
         ?TypeId $extends = null,
         ?string $annotation = null,
-        ?Source $source = null,
         public readonly string $type = 'string',
     ) {
-        parent::__construct($id, $extends, $annotation, $source);
+        parent::__construct($id, $extends, $annotation);
     }
 }
