@@ -27,19 +27,22 @@ class ClassWriter
         }
 
         $factory = new BuilderFactory();
+
         $classPhpType = $type->getPhpLocalName();
         $classStmt = $factory->class($classPhpType);
         $namespaceStmt = $factory->namespace($phpNs);
+
         $arrayConstructorArgs = [];
-        $lateClassStmts = [];
         $inheritedProperties = [];
-        $parentType = null;
+        $lateClassStmts = [];
+        $metaArrayValues = [];
         $parentCtorArgs = [];
+        $parentType = null;
 
         // Deal with class extension.
         if ($type->extends) {
             try {
-                $parentType = $context->findType($type->extends);
+                $parentType = $context->getType($type->extends);
                 $parentPhpNs = $parentType->getPhpNamespace();
                 $parentPhpName = $parentType->getPhpLocalName();
 
@@ -50,7 +53,7 @@ class ClassWriter
 
                 $inheritedProperties = $this->aggregateInheritedProps($context, $type, $parentType);
             } catch (TypeDoesNotExistError $e) {
-                if (!$context->config->ignoreMissingTypes) {
+                if (!$context->config->errorWhenTypeMissing) {
                     throw $e;
                 }
                 $context->logErr('{type}: cannot inherit from {parent}: type is missing', ['type' => $type->toString(), 'parent' => $type->extends->toString()]);
@@ -59,7 +62,7 @@ class ClassWriter
 
         // Build up a constructor.
         $ctorStmt = $factory->method('__construct');
-        if ($context->config->constructor) {
+        if ($context->config->classConstructor) {
             $ctorStmt->makePublic();
         } else {
             $ctorStmt->makeProtected();
@@ -70,15 +73,23 @@ class ClassWriter
             foreach ($inheritedProperties as $prop) {
                 \assert($prop instanceof ComplexTypeProperty);
 
-                $parentPropName = $prop->getPhpName();
+                $propName = $prop->getPhpName();
 
-                $ctorStmt->addParam($factory->param($parentPropName)->setType($parentType->getPhpLocalName()));
-                $parentCtorArgs[$parentPropName] = new Node\Expr\Variable($parentPropName);
+                $ctorStmt->addParam($factory->param($propName)->setType($prop->getPhpType()));
+                $parentCtorArgs[$propName] = new Node\Expr\Variable($propName);
 
                 // Add to array hydrator, if any.
-                if ($context->config->arrayHydrator) {
-                    // @todo
+                if ($context->config->classFactoryMethod) {
+                    $arrayConstructorArgs[$propName] = $this->propertyHydratorArgument($context, $prop, $factory, $classPhpType);
                 }
+
+                $metaArrayValues[] = new Node\ArrayItem(
+                    new Node\Expr\Array_([
+                        $factory->val($prop->getPhpTypeMeta()),
+                        $factory->val($prop->collection),
+                    ]),
+                    $factory->val($propName),
+                );
             }
         }
 
@@ -111,12 +122,20 @@ class ClassWriter
                 $lateClassStmts[] = $this->propertySetter($context, $prop, $factory);
             }
 
-            if ($context->config->arrayHydrator) {
+            if ($context->config->classFactoryMethod) {
                 $arrayConstructorArgs[$propName] = $this->propertyHydratorArgument($context, $prop, $factory, $classPhpType);
             }
+
+            $metaArrayValues[] = new Node\ArrayItem(
+                new Node\Expr\Array_([
+                    $factory->val($prop->getPhpTypeMeta()),
+                    $factory->val($prop->collection),
+                ]),
+                $factory->val($propName),
+            );
         }
 
-        if ($context->config->arrayHydrator) {
+        if ($context->config->classFactoryMethod) {
             $classStmt->addStmt(
                 $factory
                     ->method('create')
@@ -130,7 +149,7 @@ class ClassWriter
                                 $factory->var('values'),
                                 new Node\Name('self'),
                             ),
-                             [
+                            [
                                 'stmts' => [
                                     new Node\Stmt\Return_(
                                         new Node\Expr\Variable('values')
@@ -138,7 +157,9 @@ class ClassWriter
                                 ],
                              ],
                         ),
-                        $factory->new('self', $arrayConstructorArgs)
+                        new Node\Stmt\Return_(
+                            $factory->new('self', $arrayConstructorArgs)
+                        ),
                     ])
             );
         }
@@ -148,6 +169,25 @@ class ClassWriter
             $ctorStmt->addStmt($factory->staticCall(new Node\Name('parent'), '__construct', $parentCtorArgs));
         }
 
+        // Meta data method for hydrators and extractors.
+        $classStmt->addStmt(
+            $factory
+                ->method('propertyMetadata')
+                ->makeStatic()
+                ->makePublic()
+                ->setDocComment('/** @internal */')
+                ->setReturnType('array')
+                ->addStmt(
+                    new Node\Stmt\Return_(
+                        new Node\Expr\Array_(
+                            $metaArrayValues,
+                        ),
+                    )
+                )
+        )
+        ;
+
+        // Finalize class.
         $classStmt->addStmts([$ctorStmt, ...$lateClassStmts]);
         $namespaceStmt->addStmt($classStmt);
 
@@ -177,7 +217,7 @@ class ClassWriter
         }
 
         if ($parentType->extends) {
-            $ret = $this->aggregateInheritedProps($context, $type, $context->findType($parentType->extends));
+            $ret = $this->aggregateInheritedProps($context, $type, $context->getType($parentType->extends));
         } else {
             $ret = [];
         }
@@ -214,7 +254,7 @@ class ClassWriter
         string $classPhpType,
     ): Node\Expr {
         $propName = $prop->getPhpName();
-        $propType = $context->findType($prop->type);
+        $propType = $context->getType($prop->type);
         $phpType = $prop->getPhpValueType();
 
         if ($prop->collection) {
@@ -274,9 +314,6 @@ class ClassWriter
             $namespaceStmt->addStmt($factory->use($phpValueTypeNs . '\\' . $phpValueType));
         }
 
-        // propType is the canonical type (eg. "string", "int")
-        // propTypeString is what we write (eg. "?string", "array")
-        // propDocString is what PHP can't do that we document (eg. "?string", "int[]")
         // If nullable, simply put "?" in front of type. We don't care
         // about union types, they simply don't seem to exist in WSDL
         // and XSD documentation.
@@ -290,7 +327,7 @@ class ClassWriter
         if ($context->config->propertyPromotion) {
             $ctorParam = $factory->param($propName)->setType($phpType);
 
-            if ($context->config->publicProperties) {
+            if ($context->config->propertyPublic) {
                 $ctorParam->makePublic();
             } else {
                 $ctorParam->makePrivate();
@@ -311,12 +348,12 @@ class ClassWriter
         } else {
             $propStmt = $factory->property($propName);
 
-            if ($context->config->publicProperties) {
+            if ($context->config->propertyPublic) {
                 $propStmt->makePublic();
             } else {
                 $propStmt->makePrivate();
             }
-            if ($context->config->readonlyProperties) {
+            if ($context->config->propertyReadonly) {
                 $propStmt->makeReadonly();
             }
             if ($propDocStr) {

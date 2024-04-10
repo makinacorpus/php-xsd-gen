@@ -69,9 +69,9 @@ class Writer
         $phpName = $context->getPhpPropertyName($prop->name, $type->id);
 
         try {
-            $propType = $context->findType($prop->type);
+            $propType = $context->getType($prop->type);
         } catch (TypeDoesNotExistError $e) {
-            if (!$this->config->ignoreMissingTypes) {
+            if ($this->config->errorWhenTypeMissing) {
                 throw $e;
             }
             $context->logWarn('{prop}: skipping property, type is missing', ['prop' => $prop->toString()]);

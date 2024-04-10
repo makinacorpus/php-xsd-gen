@@ -25,7 +25,7 @@ abstract class AbstractReader
 
         $directory = \dirname($filename);
         if ($context) {
-            $this->context = $context->clone($directory);
+            $this->context = $context->createCloneForDocument($directory);
         } else {
             $this->context = new ReaderContext(directory: $directory);
         }
@@ -66,7 +66,7 @@ abstract class AbstractReader
             $currentNamespace = (string) $element->getAttribute('targetNamespace');
         }
         if ($currentNamespace) {
-            $newContext = $context->nest($currentNamespace);
+            $newContext = $context->createChildWithNamespace($currentNamespace);
         }
 
         // @todo The only proper solution would be to use getAttributeNames()
@@ -87,10 +87,14 @@ abstract class AbstractReader
                     // Ignore redefinition of the XSD schema.
                     continue;
                 }
-                if (!$newContext) {
-                    $newContext = $context->nest();
-                }
                 $namespace = $matches[3][$index] ?: $matches[4][$index];
+                if ('http://www.w3.org/2001/XMLSchema' === $namespace) {
+                    // XMLSchema could be aliased, this is legal.
+                    $namespace = 'xsd';
+                }
+                if (!$newContext) {
+                    $newContext = $context->createChildWithNamespace();
+                }
                 $newContext->registerNamespace($alias, $namespace);
             }
         }

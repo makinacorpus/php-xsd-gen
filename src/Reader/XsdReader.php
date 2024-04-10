@@ -324,7 +324,7 @@ class XsdReader extends AbstractReader
             if ('xsd' === $extendsId->namespace) {
                 $this->warning(\sprintf("<xsd:extension>: should not extend a scalar type"));
             } else {
-                $extends = $context->findType($extendsId);
+                $extends = $context->getType($extendsId);
             }
         }
 
@@ -373,7 +373,7 @@ class XsdReader extends AbstractReader
             if ('xsd' === $extendsId->namespace) {
                 $this->warning(\sprintf("<xsd:restriction>: should not extend a scalar type"));
             } else {
-                $extends = $context->findType($extendsId);
+                $extends = $context->getType($extendsId);
             }
         }
 
@@ -430,14 +430,16 @@ class XsdReader extends AbstractReader
                     continue;
                 }
 
+                $subContext = $this->processNamespaces($context, $child);
+
                 $nullable = false;
 
                 if ($typeName = $this->attribute($child, 'type')) {
-                    $typeId = $context->createTypeId($typeName);
+                    $typeId = $subContext->createTypeId($typeName);
                     if ('xsd' === $typeId->namespace) {
-                        $propType = $context->addScalarType($typeId);
+                        $propType = $subContext->addScalarType($typeId);
                     } else {
-                        $propType = $context->findType($typeId);
+                        $propType = $subContext->getType($typeId);
                     }
                 } else {
                     // When dealing with a complex type we need to name it using
@@ -445,7 +447,7 @@ class XsdReader extends AbstractReader
                     // parent type name and suffix using the property name.
                     // Since that types are unique in the same namespace, we
                     // should not experience any conflicting names.
-                    $propType = $this->readElement($context, $child, $type->id->name . '_' . $name);
+                    $propType = $this->readElement($subContext, $child, $type->id->name . '_' . $name);
                 }
                 if (!$propType) {
                     $this->warning(\sprintf("<xsd:element>: could not find type of property %s", $name));

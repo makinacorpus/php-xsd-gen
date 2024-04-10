@@ -67,6 +67,24 @@ class ComplexTypeProperty
     }
 
     /**
+     * For hydrator/extractor meta information.
+     *
+     * @internal
+     */
+    public function getPhpTypeMeta(): string
+    {
+        $this->dieIfNotResolved();
+
+        if ($this->phpTypeBuiltIn) {
+            return $this->phpValueType;
+        }
+        if ($this->phpValueTypeNs) {
+            return $this->phpValueTypeNs . '\\' . $this->phpValueType;
+        }
+        return $this->phpValueType;
+    }
+
+    /**
      * Get PHP value type string, when a collection return the collection
      * type instead of the value type (eg. "array').
      */
@@ -89,7 +107,7 @@ class ComplexTypeProperty
 
     /**
      * Get PHP value types, when an collection return the collection value
-     * type and not the collection type itself (eg. "string"). 
+     * type and not the collection type itself (eg. "string").
      */
     public function getPhpValueType(): string
     {

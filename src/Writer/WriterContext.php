@@ -41,7 +41,7 @@ class WriterContext implements Context
     /**
      * Find an existing type.
      */
-    public function findType(TypeId $id): AbstractType
+    public function getType(TypeId $id): AbstractType
     {
         return $this->types->getType($id);
     }
@@ -54,7 +54,7 @@ class WriterContext implements Context
      */
     public function getPhpPropertyName(string $name, TypeId $parentId): string
     {
-        return $this->config->camelCaseProperties ? \lcfirst($name) : $name;
+        return $this->config->propertyCamelCase ? \lcfirst($name) : $name;
     }
 
     /**

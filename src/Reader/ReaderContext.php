@@ -44,14 +44,6 @@ class ReaderContext implements Context
     }
 
     /**
-     * Get global context.
-     */
-    public function getGlobalContext(): GlobalContext
-    {
-        return $this->global;
-    }
-
-    /**
      * Create type identifier.
      */
     public function createTypeId(string $name, ?string $namespace = null): TypeId
@@ -98,13 +90,13 @@ class ReaderContext implements Context
     /**
      * Find an existing type.
      */
-    public function findType(TypeId $id): AbstractType
+    public function getType(TypeId $id): AbstractType
     {
         $id = $this->resolveTypeId($id);
 
         $this->import($id->namespace);
 
-        return $this->global->findType($id);
+        return $this->global->getType($id);
     }
 
     /**
@@ -130,30 +122,6 @@ class ReaderContext implements Context
     }
 
     /**
-     * Create a new context level.
-     */
-    public function nest(?string $namespace = null): self
-    {
-        return new self(
-            directory: $this->directory,
-            global: $this->global,
-            namespace: $namespace ?? $this->namespace,
-            parent: $this,
-        );
-    }
-
-    /**
-     * Clone for new directory.
-     */
-    public function clone(?string $directory = null)
-    {
-        return new ReaderContext(
-            directory: $directory,
-            global: $this->global,
-        );
-    }
-
-    /**
      * Import an additionnal file.
      */
     public function import(string $namespace, ?string $schemaLocation = null): void
@@ -176,5 +144,31 @@ class ReaderContext implements Context
         } catch (ResourceCouldNotBeFoundError $e) {
             $this->logErr($e->getMessage());
         }
+    }
+
+    /**
+     * Create a new context level.
+     */
+    public function createChildWithNamespace(?string $namespace = null): self
+    {
+        return new self(
+            directory: $this->directory,
+            global: $this->global,
+            namespace: $namespace ?? $this->namespace,
+            parent: $this,
+        );
+    }
+
+    /**
+     * Clone for new directory.
+     *
+     * @internal
+     */
+    public function createCloneForDocument(?string $directory = null)
+    {
+        return new ReaderContext(
+            directory: $directory,
+            global: $this->global,
+        );
     }
 }

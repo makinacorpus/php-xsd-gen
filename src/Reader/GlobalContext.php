@@ -79,7 +79,7 @@ class GlobalContext implements Context, ResourceLocator
     /**
      * Find an existing type.
      */
-    public function findType(TypeId $id): AbstractType
+    public function getType(TypeId $id): AbstractType
     {
         if ($this->types->hasType($id)) {
             return $this->types->getType($id);
