@@ -9,22 +9,45 @@ use MakinaCorpus\SoapGenerator\Error\WriterError;
 abstract class AbstractType
 {
     private ?string $hash = null;
+    private ?string $annotation = null;
 
     // Computed properties during resolution.
     public bool $resolved = false;
+    public bool $inheritanceResolved = false;
     private ?string $phpNamespace = null;
     private ?string $phpLocalName = null;
+    private ?string $parentPhpNamespace = null;
+    private ?string $parentPhpLocalName = null;
 
     public function __construct(
         public readonly TypeId $id,
         public ?TypeId $extends = null,
-        public ?string $annotation = null,
     ) {}
+
+    /**
+     * Set annotation (PHP doc comment).
+     */
+    public function setAnnotation(string $annotation): void
+    {
+        if ($this->annotation) {
+            $this->annotation .= "\n\n" . \trim($annotation);
+        } else {
+            $this->annotation = \trim($annotation);
+        }
+    }
+
+    /**
+     * Get annotation.
+     */
+    public function getAnnotation(): ?string
+    {
+        return $this->annotation;
+    }
 
     /**
      * Set inherit type.
      */
-    public function extends(TypeId $extends): void
+    public function setInheritedType(TypeId $extends): void
     {
         $this->extends = $extends;
     }
@@ -56,14 +79,21 @@ abstract class AbstractType
     }
 
     /**
+     * Set inheritance information.
+     */
+    public function resolveInheritance(string $parentPhpLocalName, ?string $parentPhpNamespace): void
+    {
+        $this->inheritanceResolved = true;
+        $this->parentPhpNamespace = $parentPhpNamespace;
+        $this->parentPhpLocalName = $parentPhpLocalName;
+    }
+
+    /**
      * Get computed PHP local name.
      */
     public function getPhpLocalName(): string
     {
-        if (!$this->resolved) {
-            throw new WriterError("Type was not resolved.");
-        }
-        return $this->phpLocalName;
+        return $this->dieIfNotResolved() ?? $this->phpLocalName;
     }
 
     /**
@@ -71,10 +101,23 @@ abstract class AbstractType
      */
     public function getPhpNamespace(): ?string
     {
-        if (!$this->resolved) {
-            throw new WriterError("Type was not resolved.");
-        }
-        return $this->phpNamespace;
+        return $this->dieIfNotResolved() ?? $this->phpNamespace;
+    }
+
+    /**
+     * Get computed PHP local name.
+     */
+    public function getParentPhpLocalName(): ?string
+    {
+        return $this->dieIfNotResolved() ?? $this->parentPhpLocalName;
+    }
+
+    /**
+     * Get computed PHP namespace, null for root namespace.
+     */
+    public function getParentPhpNamespace(): ?string
+    {
+        return $this->dieIfNotResolved() ?? $this->parentPhpNamespace;
     }
 
     public function equals(AbstractType $other): bool
@@ -100,5 +143,16 @@ abstract class AbstractType
     protected function computeHash(): string
     {
         return \sha1(\implode('#', \array_filter([$this->toString(), $this->extends?->toString(), ...$this->computeHashAdditions()])));
+    }
+
+    /**
+     * Die if not resolved.
+     */
+    protected function dieIfNotResolved(): mixed
+    {
+        if (!$this->resolved) {
+            throw new WriterError("Type was not resolved.");
+        }
+        return null;
     }
 }

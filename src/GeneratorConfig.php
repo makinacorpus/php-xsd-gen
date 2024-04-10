@@ -79,7 +79,7 @@ use Psr\Log\LoggerInterface;
  *     # Generate property getters. Default is true.
  *     property_getter: true
  *
- *     # Use property constructor promotion when possible.
+ *     # Use constructor property promotion when possible.
  *     # Default is false.
  *     property_promotion: false
  *
@@ -89,7 +89,7 @@ use Psr\Log\LoggerInterface;
  *
  *     # Make properties being readonly when possible.
  *     # Default is false.
- *     property_readonly: false
+ *     property_readonly: true
  *
  *     # Generate property setters. Default is false.
  *     property_setter: false

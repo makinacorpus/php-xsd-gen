@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="https://schemas.makina-corpus.com/testing/inheritance" targetNamespace="https://schemas.makina-corpus.com/testing/inheritance" elementFormDefault="unqualified" attributeFormDefault="unqualified">
+  <xsd:simpleType name="SampleCodifiedStr">
+    <xsd:restriction base="xsd:string">
+      <xsd:minLength value="1" />
+    </xsd:restriction>
+  </xsd:simpleType>
+  <xsd:complexType name="FrenchAddressWithPhone">
+    <xsd:annotation>
+      <xsd:documentation>Uses "xsd:extension" and add properties.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:complexContent>
+      <xsd:extension base="FrenchAddress">
+        <xsd:sequence>
+          <xsd:element name="PhoneNumber" type="xsd:string" minOccurs="0"></xsd:element>
+        </xsd:sequence>
+      </xsd:extension>
+    </xsd:complexContent>
+  </xsd:complexType>
+  <xsd:complexType name="FrenchAddress">
+    <xsd:annotation>
+      <xsd:documentation>Uses "xsd:restriction" to change existing properties.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:complexContent>
+      <xsd:restriction base="Address">
+        <xsd:sequence>
+          <xsd:element name="Country" type="xsd:string" minOccurs="1">
+            <xsd:annotation>
+              <xsd:documentation>Alters cardinality.</xsd:documentation>
+            </xsd:annotation>
+          </xsd:element>
+        </xsd:sequence>
+      </xsd:restriction>
+    </xsd:complexContent>
+  </xsd:complexType>
+  <xsd:complexType name="Address">
+    <xsd:annotation>
+      <xsd:documentation>Some random address</xsd:documentation>
+    </xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="Street" type="xsd:string" minOccurs="1">
+        <xsd:annotation>
+          <xsd:documentation>A basic "xsd:string'.</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="City" type="foo:string" minOccurs="1" xmlns:foo="http://www.w3.org/2001/XMLSchema">
+        <xsd:annotation>
+          <xsd:documentation>This example is about shadowing "xsd" attribute with an alias.</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="Country" type="xsd:string">
+        <xsd:annotation>
+          <xsd:documentation>A basic "xsd:string'.</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:sequence>
+  </xsd:complexType>
+</xsd:schema>

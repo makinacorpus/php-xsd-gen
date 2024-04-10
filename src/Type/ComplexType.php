@@ -8,20 +8,32 @@ use MakinaCorpus\SoapGenerator\Error\ReaderError;
 
 class ComplexType extends AbstractType
 {
+    /** @var ComplexTypeProperty[] */
+    private array $inheritedProperties = [];
+
     public function __construct(
         TypeId $id,
         ?TypeId $extends = null,
-        ?string $annotation = null,
         public array $properties = [],
         public bool $abstract = false,
     ) {
-        parent::__construct($id, $extends, $annotation);
+        parent::__construct($id, $extends);
+    }
+
+    /**
+     * Set inheritance information.
+     *
+     * @param ComplexTypeProperty[] $inheritedProperties
+     */
+    public function resolveInheritedProperties(array $inheritedProperties): void
+    {
+        $this->inheritedProperties = $inheritedProperties;
     }
 
     /**
      * Add property.
      */
-    public function property(ComplexTypeProperty $property): void
+    public function setProperty(ComplexTypeProperty $property): void
     {
         if (\array_key_exists($property->name, $this->properties)) {
             throw new ReaderError(\sprintf("%s: property already exists and cannot be overriden", $property->toString()));
@@ -35,7 +47,29 @@ class ComplexType extends AbstractType
      */
     public function propertyExists(string $name): bool
     {
-        return \array_key_exists($name, $this->properties);
+        try {
+            return $this->getProperty($name)->resolved;
+        } catch (ReaderError) {
+            return false;
+        }
+    }
+
+    /**
+     * Get a single property.
+     */
+    public function getProperty(string $name): ComplexTypeProperty
+    {
+        return $this->properties[$name] ?? throw new ReaderError(\sprintf("%s[%s]: property does not exists", $this, $name));
+    }
+
+    /**
+     * Get inherited properties.
+     *
+     * @return ComplexTypeProperty[]
+     */
+    public function getInheritedProperties(): array
+    {
+        return $this->dieIfNotResolved() ?? $this->inheritedProperties;
     }
 
     #[\Override]

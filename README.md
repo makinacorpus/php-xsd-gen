@@ -46,7 +46,56 @@ This API generates PHP classes from a given XSD schema.
 Will output:
 
 ```php
-// @todo
+<?php
+
+namespace MakinaCorpus\SoapGenerator\Tests\Generated\Defaults\Inheritance;
+
+class Address
+{
+    /**
+     * @internal Hydrator for XML or array exchange.
+     */
+    public static function create(array|object $values): self
+    {
+        if ($values instanceof self) {
+            return $values;
+        }
+
+        return new self(
+            street: $values['Street'] ?? throw new \InvalidArgumentException('Address::\$street property cannot be null'),
+            city: $values['City'] ?? throw new \InvalidArgumentException('Address::\$city property cannot be null'),
+            country: $values['Country'] ?? throw new \InvalidArgumentException('Address::\$country property cannot be null'),
+        );
+    }
+
+    /**
+     * @internal Property metadata for XML exchange.
+     */
+    public static function propertyMetadata(): array
+    {
+        return [
+            'street' => ['string', false],
+            'city' => ['string', false],
+            'country' => ['string', false],
+        ];
+    }
+
+    public function __construct(
+        /**
+         * A basic "xsd:string'.
+         */
+        public readonly string $street,
+        /**
+         * This example is about shadowing "xsd" attribute with an alias.
+         */
+        public readonly string $city,
+        /**
+         * A basic "xsd:string'.
+         */
+        public readonly string $country
+    ) {
+    }
+}
 ```
 
 Note: generated code may be fine-tuned, properties can be either public or private,
@@ -162,6 +211,8 @@ the content from a local file.
 
 ## Collections
 
+### PHP type
+
 Properties may have multiple values, which make them collections. When
 a collection is detected (see algorithm in the next two sections) it
 its type in the generated PHP code is `array`.
@@ -174,7 +225,7 @@ the value type for IDE to be able to resolve the value type. The generated
 value accessors will also inherit from their respective `@returns` and
 `@param` PHP doc type annotations.
 
-## minOccurs and maxOccurs
+### minOccurs and maxOccurs
 
 `minOccurs` and `maxOccurs` parameters will drive the collection status of
 a `<xsd:sequence><xsd:element>` generated property.
@@ -190,13 +241,34 @@ In all other cases, the property will have the element target type.
 If `minOccurs` is not defined, or its value is `0`, then the property will
 be made nullable.
 
-## nilable
+## nillable
 
-`nilable` attribute in `<xsd:sequence><xsd:element>` will make the
+`nillable` attribute in `<xsd:sequence><xsd:element>` will make the
 property nullable. This takes precedence over the `minOccurs` parameter.
 
 `nilable` is ignored for collection, an empty collection will always be
 created no matter it is nullable or not.
+
+## Property shadowing
+
+When a type `class A { int $c }` is extended by some type `class B { int $c }`
+which redefine an existing property, multiple scenarios may occur.
+
+1. If the constructor property promotion is enabled, the property in the
+   `B` type will be ignored, and type specialization will be lost. This
+   is mandatory otherwise PHP will detect the property redefinition and
+   cause a crash when compiling the code.
+   Note that when the property are private, the constructor promoted
+   property will remain defined.
+
+2. If the properties are normal properties defined at the class level,
+   we let it be overriden, but pass the value to the parent constructor
+   if the property is not nullable.
+   Note that if the `B::$c` property is not contravariant with the
+   `A::$c` property you will experience runtime errors.
+
+Please note that handling `<xsd:restriction>` shadowed properties is still
+experimental, but a quite rare use case.
 
 ## Error handling
 
@@ -236,7 +308,7 @@ fully parsed.
 This can be made stricter and raise exception by setting the `type_missing_error`
 option to `true`.
 
-## Redefined type
+### Redefined type
 
 When a type is found more than once, for example when you parse a set of
 multiple WSDL files at once which do not import a common resource but all
@@ -326,7 +398,6 @@ PHP code in order to make it fit your own conventions.
 # Todolist
 
  - Propagate <xsd:annotation> as PHP-doc
- - Handle correctly PHP-doc on property vs constructor promoted property vs getter.
  - Handle enum: option for generating either PHP enum, or class with constants
  - Handle other simple types
  - Make simple type user-pluggable

@@ -9,8 +9,6 @@ use MakinaCorpus\SoapGenerator\GeneratorConfig;
 
 /**
  * @todo
- *   - Handle logger
- *   - Add a single namespace(source, target) name
  *   - handle name map
  */
 abstract class AbstractGenerator
@@ -167,7 +165,7 @@ abstract class AbstractGenerator
     }
 
     /**
-     * Write all properties using property constructor promotion.
+     * Write all properties using constructor property promotion.
      *
      * Default is true.
      */

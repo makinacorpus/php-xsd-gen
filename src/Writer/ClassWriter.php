@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace MakinaCorpus\SoapGenerator\Writer;
 
-use MakinaCorpus\SoapGenerator\Error\TypeDoesNotExistError;
 use MakinaCorpus\SoapGenerator\Error\WriterError;
-use MakinaCorpus\SoapGenerator\Type\AbstractType;
 use MakinaCorpus\SoapGenerator\Type\ComplexType;
 use MakinaCorpus\SoapGenerator\Type\ComplexTypeProperty;
 use PhpParser\Builder;
 use PhpParser\BuilderFactory;
+use PhpParser\Modifiers;
 use PhpParser\Node;
+use PhpParser\Comment\Doc;
 use PhpParser\PrettyPrinter\Standard;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -31,33 +31,21 @@ class ClassWriter
         $classPhpType = $type->getPhpLocalName();
         $classStmt = $factory->class($classPhpType);
         $namespaceStmt = $factory->namespace($phpNs);
+        $uses = new UseDeduplicator();
 
         $arrayConstructorArgs = [];
-        $inheritedProperties = [];
+        $inheritedProperties = $type->getInheritedProperties();
         $lateClassStmts = [];
         $metaArrayValues = [];
         $parentCtorArgs = [];
-        $parentType = null;
 
         // Deal with class extension.
-        if ($type->extends) {
-            try {
-                $parentType = $context->getType($type->extends);
-                $parentPhpNs = $parentType->getPhpNamespace();
-                $parentPhpName = $parentType->getPhpLocalName();
-
-                if ($parentPhpNs !== $phpNs) {
-                    $namespaceStmt->addStmt($factory->use($parentPhpNs . '\\' . $parentPhpName));
-                }
-                $classStmt->extend($parentPhpName);
-
-                $inheritedProperties = $this->aggregateInheritedProps($context, $type, $parentType);
-            } catch (TypeDoesNotExistError $e) {
-                if (!$context->config->errorWhenTypeMissing) {
-                    throw $e;
-                }
-                $context->logErr('{type}: cannot inherit from {parent}: type is missing', ['type' => $type->toString(), 'parent' => $type->extends->toString()]);
+        if ($parentPhpName = $type->getParentPhpLocalName()) {
+            $parentPhpNs = $type->getParentPhpNamespace();
+            if ($parentPhpNs !== $phpNs) {
+                $uses->addUse($parentPhpNs, $parentPhpName);
             }
+            $classStmt->extend($parentPhpName);
         }
 
         // Build up a constructor.
@@ -69,27 +57,46 @@ class ClassWriter
         }
 
         // Put all properties from parents in constructor.
-        if ($parentType && $inheritedProperties) {
+        if ($inheritedProperties) {
             foreach ($inheritedProperties as $prop) {
                 \assert($prop instanceof ComplexTypeProperty);
 
-                $propName = $prop->getPhpName();
+                if (!$prop->resolved) {
+                    continue;
+                }
 
-                $ctorStmt->addParam($factory->param($propName)->setType($prop->getPhpType()));
+                $propName = $prop->getPhpName();
+                $propertyIsShadowed = $type->propertyExists($prop->name);
+
+                if (!$prop->isPhpTypeBuiltIn() && ($propPhpNs = $prop->getPhpValueTypeNamespace()) && $propPhpNs !== $phpNs) {
+                    $uses->addUse($propPhpNs, $prop->getPhpValueType());
+                }
+
+                // Constructor argument will already be there when not using CPP
+                // because in that case, we keep the most specific version of the
+                // argument.
+                // @see Writer::resolveInheritanceProps() for a more detailed
+                // explanation.
+                if (!$propertyIsShadowed || $context->config->propertyPromotion) {
+                    $ctorStmt->addParam($factory->param($propName)->setType($prop->getPhpType()));
+                }
                 $parentCtorArgs[$propName] = new Node\Expr\Variable($propName);
 
-                // Add to array hydrator, if any.
                 if ($context->config->classFactoryMethod) {
                     $arrayConstructorArgs[$propName] = $this->propertyHydratorArgument($context, $prop, $factory, $classPhpType);
                 }
 
-                $metaArrayValues[] = new Node\ArrayItem(
-                    new Node\Expr\Array_([
-                        $factory->val($prop->getPhpTypeMeta()),
-                        $factory->val($prop->collection),
-                    ]),
-                    $factory->val($propName),
-                );
+                // Same as constructor, if property already exists it will
+                // be handled by type own properties.
+                if (!$propertyIsShadowed) {
+                    $metaArrayValues[] = new Node\ArrayItem(
+                        new Node\Expr\Array_([
+                            $factory->val($prop->getPhpTypeMeta()),
+                            $factory->val($prop->collection),
+                        ]),
+                        $factory->val($propName),
+                    );
+                }
             }
         }
 
@@ -98,21 +105,13 @@ class ClassWriter
             \assert($prop instanceof ComplexTypeProperty);
 
             if (!$prop->resolved) {
-                continue; // Property skipped by resolution.
+                $context->logWarn("{prop}: skipping property: was not resolved or dropped", ['prop' => $prop]);
+                continue;
             }
 
             $propName = $prop->getPhpName();
 
-            $this->propertyRegister(
-                $context,
-                $type,
-                $phpNs,
-                $prop,
-                $factory,
-                $classStmt,
-                $namespaceStmt,
-                $ctorStmt,
-            );
+            $this->propertyRegister($context, $type, $phpNs, $prop, $factory, $classStmt, $uses, $ctorStmt);
 
             if ($context->config->propertyGetters) {
                 $lateClassStmts[] = $this->propertyGetter($context, $prop, $factory);
@@ -139,10 +138,20 @@ class ClassWriter
             $classStmt->addStmt(
                 $factory
                     ->method('create')
+                    ->setDocComment(
+                        <<<EOT
+                        /**
+                         * @internal Hydrator for XML or array exchange.
+                         */
+                        EOT
+                    )
                     ->makeStatic()
                     ->makePublic()
-                    ->addParam($factory->param('values')->setType('array|self'))
+                    ->addParam($factory->param('values')->setType('array|object'))
                     ->setReturnType('self')
+                    // @todo Fix this, since we typed with "object",
+                    //    we need to throw exception if not array after
+                    //    first if.
                     ->addStmts([
                         new Node\Stmt\If_(
                             new Node\Expr\Instanceof_(
@@ -155,7 +164,7 @@ class ClassWriter
                                         new Node\Expr\Variable('values')
                                     )
                                 ],
-                             ],
+                            ],
                         ),
                         new Node\Stmt\Return_(
                             $factory->new('self', $arrayConstructorArgs)
@@ -165,7 +174,7 @@ class ClassWriter
         }
 
         // Add parent constructor call.
-        if ($parentType) {
+        if ($parentCtorArgs) {
             $ctorStmt->addStmt($factory->staticCall(new Node\Name('parent'), '__construct', $parentCtorArgs));
         }
 
@@ -175,7 +184,13 @@ class ClassWriter
                 ->method('propertyMetadata')
                 ->makeStatic()
                 ->makePublic()
-                ->setDocComment('/** @internal */')
+                ->setDocComment(
+                    <<<EOT
+                    /**
+                     * @internal Property metadata for XML exchange.
+                     */
+                    EOT
+                )
                 ->setReturnType('array')
                 ->addStmt(
                     new Node\Stmt\Return_(
@@ -184,8 +199,11 @@ class ClassWriter
                         ),
                     )
                 )
-        )
-        ;
+        );
+
+        foreach ($uses->getAllUse() as $importedName) {
+            $namespaceStmt->addStmt($factory->use($importedName));
+        }
 
         // Finalize class.
         $classStmt->addStmts([$ctorStmt, ...$lateClassStmts]);
@@ -198,50 +216,6 @@ class ClassWriter
 
         $prettyPrinter = new Standard();
         \file_put_contents($targetFilename, $prettyPrinter->prettyPrintFile([$namespaceStmt->getNode()]));
-    }
-
-    /**
-     * Recursively aggregate inherited properties of parents.
-     *
-     * Removes properties that are shadowed by the type we are generating.
-     *
-     * @return ComplexTypeProperty[]
-     */
-    private function aggregateInheritedProps(
-        WriterContext $context,
-        ComplexType $type,
-        AbstractType $parentType
-    ): array {
-        if (!$parentType instanceof ComplexType) {
-            throw new WriterError(\sprintf("%s: parent type %s is not a complex type", $type->toString(), $parentType->toString()));
-        }
-
-        if ($parentType->extends) {
-            $ret = $this->aggregateInheritedProps($context, $type, $context->getType($parentType->extends));
-        } else {
-            $ret = [];
-        }
-
-        foreach ($parentType->properties as $prop) {
-            \assert($prop instanceof ComplexTypeProperty);
-
-            if (!$prop->resolved) {
-                continue; // Property skipped by resolution.
-            }
-
-            if ($type->propertyExists($prop->name)) {
-                // Property is shadowed.
-                continue;
-            }
-
-            // Since we order properties from the deepest ancestor toward
-            // the closest one, shadowing properties will happen in natural
-            // order among parents. We only need to remove properties
-            // shadowed by the class we are generating.
-            $ret[$prop->name] = $prop;
-        }
-
-        return $ret;
     }
 
     /**
@@ -302,7 +276,7 @@ class ClassWriter
         ComplexTypeProperty $prop,
         BuilderFactory $factory,
         Builder\Class_ $classStmt,
-        Builder\Namespace_ $namespaceStmt,
+        UseDeduplicator $uses,
         Builder\Method $ctorStmt,
     ): void {
         $propName = $prop->getPhpName();
@@ -311,40 +285,56 @@ class ClassWriter
         $phpValueTypeNs = $prop->getPhpValueTypeNamespace();
 
         if (!$prop->isPhpTypeBuiltIn() && $phpValueTypeNs && $phpValueTypeNs !== $classNs) {
-            $namespaceStmt->addStmt($factory->use($phpValueTypeNs . '\\' . $phpValueType));
+            $uses->addUse($phpValueTypeNs, $phpValueType);
+        }
+
+        // @todo Make something better for formatting.
+        $propDocStr = null;
+        if ($annotation = $prop->getAnnotation()) {
+            $propDocStr = "/**\n * " . \implode("\n * ", \array_map('trim', \explode("\n", $annotation)));
         }
 
         // If nullable, simply put "?" in front of type. We don't care
         // about union types, they simply don't seem to exist in WSDL
         // and XSD documentation.
-        $propDocStr = null;
         if ($prop->collection) {
             // We ignore nullable status for collections, we always can
             // put an empty array instead, and that's fine.
-            $propDocStr = \sprintf('/** @var %s[] */', $phpValueType);
+            $phpDocType = $phpValueType . '[]';
+
+            if ($propDocStr) {
+                $propDocStr .= "\n * \n * @var " . $phpDocType . "\n */";
+            } else {
+                $propDocStr .= "/** @var " . $phpDocType . "\n */";
+            }
+        } else if ($propDocStr) {
+            $propDocStr .= "\n */";
         }
 
         if ($context->config->propertyPromotion) {
-            $ctorParam = $factory->param($propName)->setType($phpType);
-
+            $flags = 0;
             if ($context->config->propertyPublic) {
-                $ctorParam->makePublic();
+                $flags |= Modifiers::PUBLIC;
             } else {
-                $ctorParam->makePrivate();
+                $flags |= Modifiers::PRIVATE;
+            }
+            if ($context->config->propertyReadonly) {
+                $flags |= Modifiers::READONLY;
             }
 
+            $attributes = [];
             if ($propDocStr) {
-                // @todo
-                // $ctorParam ?
-                // Adding a PHP-doc over a param is a case that is not
-                // implemented by the builder, they probably should then
-                // be written as @param over the constructor method
-                // itself.
+                $attributes['comments'][] = new Doc($propDocStr);
             }
 
-            // Properties are constructor promoted.
-            $ctorStmt->addParam($ctorParam);
-
+            $ctorStmt->addParam(
+                new Node\Param(
+                    attributes: $attributes,
+                    flags: $flags,
+                    type: new Node\Identifier($phpType),
+                    var: $factory->var($propName),
+                )
+            );
         } else {
             $propStmt = $factory->property($propName);
 
@@ -447,7 +437,7 @@ class ClassWriter
         ;
 
         if ($prop->collection) {
-            $stmt->setDocComment(\sprintf('/** @param %s[] \$%s*/', $phpValueType, $propName));
+            $stmt->setDocComment(\sprintf('/** @param %s[] $value*/', $phpValueType));
         }
 
         return $stmt;

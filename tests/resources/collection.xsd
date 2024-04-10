@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="https://schemas.makina-corpus.com/testing/collection" targetNamespace="https://schemas.makina-corpus.com/testing/collection" elementFormDefault="unqualified" attributeFormDefault="unqualified">
+  <xsd:complexType name="PropertyCollection">
+    <xsd:sequence>
+      <xsd:element name="nonNullable" type="xsd:string" minOccurs="1" maxOccurs="unbounded">
+        <xsd:annotation>
+          <xsd:documentation>Non-nullable unbounded collection</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="nullable" type="xsd:string" minOccurs="0" maxOccurs="unbounded">
+        <xsd:annotation>
+          <xsd:documentation>Nullable unbounded collection</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="nullableBounded" type="xsd:string" maxOccurs="30">
+        <xsd:annotation>
+          <xsd:documentation>Nullable bounded collection</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="nullableSingle" type="xsd:string" minOccurs="0">
+        <xsd:annotation>
+          <xsd:documentation>Nullable non-collection</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="nonNullableSingle" type="xsd:string" minOccurs="1">
+        <xsd:annotation>
+          <xsd:documentation>Non-nullable non-collection</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:sequence>
+  </xsd:complexType>
+</xsd:schema>

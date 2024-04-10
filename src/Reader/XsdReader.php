@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace MakinaCorpus\SoapGenerator\Reader;
 
+use MakinaCorpus\SoapGenerator\Type\AbstractType;
 use MakinaCorpus\SoapGenerator\Type\ComplexType;
 use MakinaCorpus\SoapGenerator\Type\ComplexTypeProperty;
+use MakinaCorpus\SoapGenerator\Type\SimpleType;
 
 class XsdReader extends AbstractReader
 {
@@ -58,9 +60,17 @@ class XsdReader extends AbstractReader
         $context->import($namespace, $this->attr($element, 'schemaLocation'));
     }
 
-    /**
-     * Read a single type definition.
-     */
+    protected function annotation(ReaderContext $context, \DOMElement $element, mixed $object): void
+    {
+        if ($object instanceof AbstractType) {
+            $object->setAnnotation($element->textContent);
+        } else if ($object instanceof ComplexTypeProperty) {
+            $object->setAnnotation($element->textContent);
+        } else {
+            $context->logWarn("Unsupported annotation at path '{path}'", ['path' => $element->getNodePath() ?? 'unknown']);
+        }
+    }
+
     protected function element(ReaderContext $context, \DOMElement $element, ?string $name = null): void
     {
         // <element> (type)
@@ -74,15 +84,12 @@ class XsdReader extends AbstractReader
         $name ??= $this->attrOdDie($element, 'name');
 
         $context
-            ->expect('xsd:annotation', fn () => null)
+            // @todo ->expect('xsd:annotation', $this->annotation())
             ->expect('xsd:complexType', $this->complexType(...), $name)
             ->expect('xsd:simpleType', $this->simpleType(...), $name)
         ;
     }
 
-    /**
-     * Read a single type definition.
-     */
     protected function simpleType(ReaderContext $context, \DOMElement $element, ?string $name = null): void
     {
         // <simpleType (name=TYPE_NAME)>
@@ -92,7 +99,11 @@ class XsdReader extends AbstractReader
         $name ??= $this->attrOdDie($element, 'name');
         $id = $context->createTypeId($name);
 
-        $context->addScalarType($id, 'string');
+        $type = $context->addScalarType($id, 'string');
+
+        $context
+            ->expect('xsd:annotation', $this->annotation(...), $type)
+        ;
 
         // @todo Deal with simple types.
     }
@@ -138,9 +149,15 @@ class XsdReader extends AbstractReader
         $context->setType($type);
 
         $context
+            ->expect('xsd:annotation', $this->annotation(...), $type)
             ->expect('xsd:complexContent', $this->complexContent(...),  $type)
             ->expect('xsd:sequence', $this->sequence(...), $type)
         ;
+    }
+
+    protected function complexTypeAnnotation(ReaderContext $context, \DOMElement $element, SimpleType $type): void
+    {
+        $type->setAnnotation($element->textContent);
     }
 
     protected function complexContent(ReaderContext $context, \DOMElement $element, ComplexType $type): void
@@ -170,11 +187,12 @@ class XsdReader extends AbstractReader
             } else {
                 // Enforce type resolution.
                 $context->getType($extendsId);
-                $type->extends($extendsId);
+                $type->setInheritedType($extendsId);
             }
         }
 
         $context
+            ->expect('xsd:annotation', $this->annotation(...), $type)
             ->expect('xsd:sequence', $this->sequence(...), $type)
         ;
     }
@@ -189,11 +207,12 @@ class XsdReader extends AbstractReader
             } else {
                 // Enforce type resolution.
                 $context->getType($extendsId);
-                $type->extends($extendsId);
+                $type->setInheritedType($extendsId);
             }
         }
 
         $context
+            ->expect('xsd:annotation', $this->annotation(...), $type)
             ->expect('xsd:sequence', $this->sequence(...), $type)
         ;
     }
@@ -213,6 +232,7 @@ class XsdReader extends AbstractReader
         // Else if [minOccurs] is present, it's a collection.
 
         $context
+            ->expect('xsd:annotation', $this->annotation(...), $type)
             ->expect('xsd:element', function (ReaderContext $context, \DOMElement $element) use ($type) {
                 if (!$name = $this->attrRequired($element, 'name')) {
                     $context->logErr("{type}: found empty property", ['type' => $type]);
@@ -271,17 +291,20 @@ class XsdReader extends AbstractReader
                     ;
                 }
 
-                $type->property(
-                    new ComplexTypeProperty(
-                        parent: $type->id,
-                        name: $name,
-                        type: $typeId,
-                        collection: $collection,
-                        minOccur: $collection ? ($min ? $min : 0) : ($min ? 1 : 0),
-                        maxOccur: $max,
-                        nullable: $nullable,
-                    ),
+                $property = new ComplexTypeProperty(
+                    parent: $type->id,
+                    name: $name,
+                    type: $typeId,
+                    collection: $collection,
+                    minOccur: $collection ? ($min ? $min : 0) : ($min ? 1 : 0),
+                    maxOccur: $max,
+                    nullable: $nullable,
                 );
+                $type->setProperty($property);
+
+                $context
+                    ->expect('xsd:annotation', $this->annotation(...), $property)
+                ;
             })
         ;
     }

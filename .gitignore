@@ -9,4 +9,5 @@
 /phpunit.xml
 /tests/Generated/
 /tests/resources/private/
+/tests/PrivateTest.php
 /vendor/
