@@ -2,7 +2,30 @@
 
 Generate PHP classes from an XSD schema.
 
-# Examples
+TL;DR:
+
+```php
+(new Generator())
+    ->defaultDirectory(__DIR__ . 'src/Generated')
+    ->defaultNamespace('MakinaCorpus\\XsdGen\\Tests\\Generated')
+    ->namespace('http://schemas.makina-corpus.com/testing/common/1.0', 'MakinaCorpus\\Common')
+    ->propertyGetter(true)
+    ->propertyPromotion(true)
+    ->propertyPublic(false)
+    ->propertyReadonly(false)
+    ->propertySetter(false)
+    ->logger(new EchoLogger())
+    ->file(__DIR__ . '/resources/xsd/some-file.xsd')
+    ->generate()
+;
+```
+
+... will give you working PHP code replicating XSD defined data structure.
+
+Future plan is mostly to have a complete end-to-end SOAP exchange
+implementation for production projects.
+
+# Generated code examples
 
 Note: all examples in the following section removes some generated additional static
 that exists for object hydration and serialization purpose.
@@ -869,39 +892,270 @@ Here a simple working example from the unit tests:
 All configuration options have associated methods you can chain on the
 object to configure the generator behaviour.
 
-# Fine tune generated code
+# Fine tune generated code (configuration reference)
+
+When spawning the generator, you can pass numerous options to drive how will
+be generated the code, to satisfy your own conventions.
 
 ## PHP code generator options
 
-@todo
+### Protected constructor
+
+If you intend to use these objects only in a scenario where they are
+automatically hydrated from XML (default is `false`):
+
+*In configuration*:
+
+```yaml
+xsd_gen:
+    class_constructor: false
+```
+
+*With the `Generator` class*:
+
+```php
+(new Generator())
+    ->classConstructor(false)
+```
+
+### Generate factory method
+
+Generate a `create(array|self)` factory method for hydration tooling (default is `true`):
+
+*In configuration*:
+
+```yaml
+xsd_gen:
+    class_factory_method: false
+```
+
+*With the `Generator` class*:
+
+```php
+(new Generator())
+    ->classFactoryMethod(false)
+```
+
+### Default PSR-4 namespace prefix
+
+Will always be prepend to generated PHP class namespaces (no default):
+
+*In configuration*:
+
+```yaml
+xsd_gen:
+    default_namespace: YourVendor\YourApp\Generated
+```
+
+*With the `Generator` class*:
+
+```php
+(new Generator())
+    ->defaultNamespace('YourVendor\\YourApp\\Generated')
+```
+
+### Default PSR-4 namespace directory
+
+Where is the source code, this path is the default namespace prefix PSR-4
+folder where the source code will be put (no default):
+
+*In configuration*:
+
+```yaml
+xsd_gen:
+    default_directory: /path/to/app/src/Generated
+```
+
+*With the `Generator` class*:
+
+```php
+(new Generator())
+    ->defaultDirectory('/path/to/app/src/Generated')
+```
+
+### Convert property name to camelCase
+
+Should property names be camed cased, otherwise they simply keep the XSD
+given name (default is `true`):
+
+*In configuration*:
+
+```yaml
+xsd_gen:
+    property_camel_case: false
+```
+
+*With the `Generator` class*:
+
+```php
+(new Generator())
+    ->propertyCamelCase(false)
+```
+
+### Properties default values
+
+Should default values be set when applyable (default is `true`).
+
+*In configuration*:
+
+```yaml
+xsd_gen:
+    property_default: false
+```
+
+*With the `Generator` class*:
+
+```php
+(new Generator())
+    ->propertyDefault(false)
+```
+
+Warning: this is not implemented yet.
 
 ### Constructor promoted properties
 
-@todo
+Generated code will use constructor promoted properties instead of normal
+class properties (default is `false`):
+
+*In configuration*:
+
+```yaml
+xsd_gen:
+    property_promotion: true
+```
+
+*With the `Generator` class*:
+
+```php
+(new Generator())
+    ->propertyPromotion(true)
+```
 
 ### Public or private properties
 
-@todo
+Make properties `public` instead of `private` (default is `false`):
+
+*In configuration*:
+
+```yaml
+xsd_gen:
+    property_public: true
+```
+
+*With the `Generator` class*:
+
+```php
+(new Generator())
+    ->propertyPublic(true)
+```
+
+### Readonly properties
+
+Make properties `readonly` (default is `false`):
+
+*In configuration*:
+
+```yaml
+xsd_gen:
+    property_readonly: true
+```
+
+*With the `Generator` class*:
+
+```php
+(new Generator())
+    ->propertyReadonly(true)
+```
 
 ### Getters
 
-@todo
+Generate property getters (default is `true`):
+
+*In configuration*:
+
+```yaml
+xsd_gen:
+    property_getter: false
+```
+
+*With the `Generator` class*:
+
+```php
+(new Generator())
+    ->propertyGetter(false)
+```
 
 ### Setters
 
-@todo
+Generate property setters (default is `false`):
+
+*In configuration*:
+
+```yaml
+xsd_gen:
+    property_setter: true
+```
+
+*With the `Generator` class*:
+
+```php
+(new Generator())
+    ->propertySetter(true)
+```
+
+Warning: this is not compatible with `property_readonly` and will set back
+to false if `readonly` is detected.
 
 ## WSDL and XSD reader options
 
-### Error handling
+### Referenced type is missing
 
-@todo
+When a type is referenced but unfound in the present XSD document or any
+other one loaded by import magic, raise an exception and prevent code
+generation to happen. Otherwise simply drop the type and all properties
+using it (default is `false`).
+
+*In configuration*:
+
+```yaml
+xsd_gen:
+    type_missing_error: true
+```
+
+*With the `Generator` class*:
+
+```php
+(new Generator())
+    ->typeMissingError(true)
+```
+
+### Type is defined more than once
+
+When a type definition with the same namespace and name is found more than
+once, raise an exception and prevent code generation to happen. Otherwise
+simply keep the last one (default is `false`).
+
+*In configuration*:
+
+```yaml
+xsd_gen:
+    type_override_error: true
+```
+
+*With the `Generator` class*:
+
+```php
+(new Generator())
+    ->typeOverrideError(true)
+```
 
 ## Common options
 
 ### Logger
 
-@todo
+All messages, informational, warnings and errors are being sent to a logger
+implementing interfaces from `psr/log`. You can pass the `logger` option to the
+generator using any `Psr\Log\LoggerInterface` instance.
 
 # Generated code style
 
@@ -913,14 +1167,37 @@ humans.
 We recommend to configure your favorite CS fixer tool to act upon the generated
 PHP code in order to make it fit your own conventions.
 
-# Todolist
+# Future plans
 
- - use \Override attribute on shadowing getter and setters (make it configurable)
- - Propagate <xsd:annotation> as PHP-doc (missing on <xsd:element>)
- - Make \InvalidArgumentException in create() method user configurable
- - Handle enum: option for generating either PHP enum, or class with constants
- - Handle other simple types
- - Make simple type user-pluggable
- - Separate fromArray() and hydrate()
- - Write XML serializer
- - Write XML deserializer
+## Now!
+
+ - Use `#[\Override]` attribute when applyable in generated code.
+ - Propagate `<xsd:annotation>` from `<xsd:element>` to the underlaying
+   complex type in order to add PHP-doc to generated class (current state
+   of XSD reader doesn't allow this).
+ - Add more unit test, a lot of unit tests, many many unit tests.
+
+## Near future
+
+ - Add support for the `<xsd:enum>` element, by either using class constants
+   or using PHP `BackedEnum`, choice between the two being user configurable.
+ - Provide an option to skip inheritance which will merge all parenting tree
+   into a single class, thus elimating completly the property shadowing
+   variancy problem.
+ - Implement remote resource download.
+ - Allow user to choose another exception than `\InvalidArgumentException`
+   for hydrator method validation.
+ - Provide a Symfony bundle with configuration inside.
+ - Provide a complete per-source-file configuration.
+ - Provide alternative ways to spawn object collections, first implementation
+   with `doctrine/collections` to validate a proof-of-concept, and make this
+   pluggable for users to replace with something else.
+
+## Not so near future, but planned
+
+ - Generate XML tooling for hydrating values from XML content.
+ - Generate XML tooling for serializing values to XML content.
+ - Generate SOAP tooling for calling remote methods.
+ - Allow user to deal with simple types and provide its own conversion matrix.
+ - Allow user to plug static methods or functions to deal with simple types or
+   class conversion (both ways).

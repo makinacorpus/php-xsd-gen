@@ -8,23 +8,10 @@ use MakinaCorpus\XsdGen\Error\ConfigError;
 use Psr\Log\LoggerInterface;
 
 /**
- * @todo
- *   - filename generator
- *   - use trait or inheritance
- *   - use helper or not
- *   - name mapping
- *   - type mapping
- *      - convert X to Y
- *          - where Y either a custom type
- *              - needs a custom constructor generator
- *              - OR a factory method that is always there
- *          - where Y is a scalar type
- *              - optional factory method for conversion
- *   - generate from XML hydrator
- *   - generate tooling ?
+ * Configuration reference:
  *
  * ```yaml
- * config:
+ * xsd_gen:
  *     # Default namespace prefix for all generated classes.
  *     # This will be suffixed to generated namespaces.
  *     defaultNamespace: "Vendor\App\Generated"
