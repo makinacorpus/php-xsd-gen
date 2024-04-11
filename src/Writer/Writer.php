@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace MakinaCorpus\SoapGenerator\Writer;
+namespace MakinaCorpus\XsdGen\Writer;
 
-use MakinaCorpus\SoapGenerator\GeneratorConfig;
-use MakinaCorpus\SoapGenerator\Error\TypeDoesNotExistError;
-use MakinaCorpus\SoapGenerator\Reader\TypeRegistry;
-use MakinaCorpus\SoapGenerator\Type\AbstractType;
-use MakinaCorpus\SoapGenerator\Type\ComplexType;
-use MakinaCorpus\SoapGenerator\Type\ComplexTypeProperty;
-use MakinaCorpus\SoapGenerator\Type\SimpleType;
+use MakinaCorpus\XsdGen\GeneratorConfig;
+use MakinaCorpus\XsdGen\Error\TypeDoesNotExistError;
+use MakinaCorpus\XsdGen\Reader\TypeRegistry;
+use MakinaCorpus\XsdGen\Type\AbstractType;
+use MakinaCorpus\XsdGen\Type\ComplexType;
+use MakinaCorpus\XsdGen\Type\ComplexTypeProperty;
+use MakinaCorpus\XsdGen\Type\SimpleType;
 
 class Writer
 {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace MakinaCorpus\SoapGenerator\Helper;
+namespace MakinaCorpus\XsdGen\Helper;
 
 use Psr\Log\AbstractLogger;
 

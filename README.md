@@ -4,7 +4,12 @@ Generate PHP classes from an XSD schema.
 
 # Examples
 
+Note: all examples in the following section removes some generated additional static
+that exists for object hydration and serialization purpose.
+
 ## ComplexType to PHP class
+
+### Source XSD
 
 This API generates PHP classes from a given XSD schema.
 
@@ -12,13 +17,14 @@ This API generates PHP classes from a given XSD schema.
 <?xml version="1.0" encoding="UTF-8"?>
 <xsd:schema
   xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-  xmlns="http://schemas.makina-corpus.com/testing/common/1.0">
+  xmlns="https://schemas.makina-corpus.com/testing/inheritance"
+  targetNamespace="https://schemas.makina-corpus.com/testing/inheritance">
   <xsd:complexType name="Address">
     <xsd:annotation>
-      <xsd:documentation>Simple address type</xsd:documentation>
+      <xsd:documentation>Some random address</xsd:documentation>
     </xsd:annotation>
     <xsd:sequence>
-      <xsd:element name="Street" type="xsd:string" minOccurs="1" maxOccur="2">
+      <xsd:element name="Street" type="xsd:string" minOccurs="1">
         <xsd:annotation>
           <xsd:documentation>A basic "xsd:string'.</xsd:documentation>
         </xsd:annotation>
@@ -33,22 +39,17 @@ This API generates PHP classes from a given XSD schema.
           <xsd:documentation>A basic "xsd:string'.</xsd:documentation>
         </xsd:annotation>
       </xsd:element>
-      <xsd:element name="CreatedAt" type="xsd:datetime">
-        <xsd:annotation>
-          <xsd:documentation>A simple 'xsd:datetime'.</xsd:documentation>
-        </xsd:annotation>
-      </xsd:element>
     </xsd:sequence>
   </xsd:complexType>
 </xsd:schema>
 ```
 
-Will output:
+### Default settings output
 
 ```php
 <?php
 
-namespace MakinaCorpus\SoapGenerator\Tests\Generated\Defaults\Inheritance;
+namespace MakinaCorpus\XsdGen\Tests\Generated\Defaults\Inheritance;
 
 class Address
 {
@@ -66,18 +67,6 @@ class Address
             city: $values['City'] ?? throw new \InvalidArgumentException('Address::\$city property cannot be null'),
             country: $values['Country'] ?? throw new \InvalidArgumentException('Address::\$country property cannot be null'),
         );
-    }
-
-    /**
-     * @internal Property metadata for XML exchange.
-     */
-    public static function propertyMetadata(): array
-    {
-        return [
-            'street' => ['string', false],
-            'city' => ['string', false],
-            'country' => ['string', false],
-        ];
     }
 
     public function __construct(
@@ -98,13 +87,29 @@ class Address
 }
 ```
 
-Note: generated code may be fine-tuned, properties can be either public or private,
-can be either readonly or not, accessors can be generated or not, etc...
+### Legacy settings output
 
-## `<xsd:extension>` in ComplexType
+@todo
 
-`<xsd:extension>` allows type inheritance. And that's what will do the
-generated PHP output.
+## `<xsd:restriction>` in ComplexType
+
+### Source XSD
+
+`<xsd:restriction>` is type inheritance with properties override. And that's
+what will do the generated PHP output.
+
+Note: when a type restricts another, and change its properties, if property
+definition is not covariant, generated PHP code may be invalid. In order to
+avoid this from being a syntax error, set the `property_public` to `false`,
+which makes all properties private and avoid covariance problems.
+
+Tip: you probably want to set `property_getter` to `true` as well otherwise
+you will not be able to read your properties.
+
+Note: when using constructor property promotion and public properties
+altogether, redifining properties in a child class will raise PHP fatal
+errors at compile time. In order to prevent this happen, when this condition
+is fulfilled, the child class property will silentely removed.
 
 ```xml
   <!-- ... -->
@@ -126,18 +131,52 @@ generated PHP output.
   </xsd:complexType>
 ```
 
-## `<xsd:restriction>` in ComplexType
+### Default settings output
 
-`<xsd:restriction>` is type inheritance with properties override. And that's
-what will do the generated PHP output.
+```php
+<?php
 
-Note: when a type restricts another, and change its properties, if property
-definition is not covariant, generated PHP code may be invalid. In order to
-avoid this from being a syntax error, set the `property_public` to `false`,
-which makes all properties private and avoid covariance problems.
+namespace MakinaCorpus\XsdGen\Tests\Generated\Defaults\Inheritance;
 
-Tip: you probably want to set `property_getter` to `true` as well otherwise
-you will not be able to read your properties.
+class FrenchAddress extends Address
+{
+    /**
+     * @internal Hydrator for XML or array exchange.
+     */
+    public static function create(array|object $values): self
+    {
+        if ($values instanceof self) {
+            return $values;
+        }
+
+        return new self(
+            street: $values['Street'] ?? throw new \InvalidArgumentException('FrenchAddress::\$street property cannot be null'),
+            city: $values['City'] ?? throw new \InvalidArgumentException('FrenchAddress::\$city property cannot be null'),
+            country: $values['Country'] ?? throw new \InvalidArgumentException('FrenchAddress::\$country property cannot be null')
+        );
+    }
+
+    public function __construct(string $street, string $city, string $country)
+    {
+        parent::__construct(
+            street: $street,
+            city: $city,
+            country: $country,
+        );
+    }
+}
+```
+
+### Legacy settings output
+
+@todo
+
+## `<xsd:extension>` in ComplexType
+
+### Source XSD
+
+`<xsd:extension>` allows type inheritance. And that's what will do the
+generated PHP output.
 
 ```xml
   <!-- ... -->
@@ -153,20 +192,89 @@ you will not be able to read your properties.
       </xsd:extension>
     </xsd:complexContent>
   </xsd:complexType>
+
 ```
 
-Will output:
+### Default settings output
 
 ```php
-// @todo
+<?php
+
+namespace MakinaCorpus\XsdGen\Tests\Generated\Defaults\Inheritance;
+
+class FrenchAddressWithPhone extends FrenchAddress
+{
+    /**
+     * @internal Hydrator for XML or array exchange.
+     */
+    public static function create(array|object $values): self
+    {
+        if ($values instanceof self) {
+            return $values;
+        }
+
+        return new self(
+            street: $values['Street'] ?? throw new \InvalidArgumentException('FrenchAddressWithPhone::\$street property cannot be null'),
+            city: $values['City'] ?? throw new \InvalidArgumentException('FrenchAddressWithPhone::\$city property cannot be null'),
+            country: $values['Country'] ?? throw new \InvalidArgumentException('FrenchAddressWithPhone::\$country property cannot be null'),
+            phoneNumber: $values['PhoneNumber'] ?? null,
+        );
+    }
+
+    public function __construct(
+        string $street,
+        string $city,
+        string $country,
+        public readonly ?string $phoneNumber
+    ) {
+        parent::__construct(
+            street: $street,
+            city: $city,
+            country: $country,
+        );
+    }
+}
 ```
+
+### Legacy settings output
+
+@todo
+
+## ComplexType reference in ComplexType
+
+### Source XSD
+
+@todo
+
+### Default settings output
+
+@todo
+
+### Legacy settings output
+
+@todo
+
+## Russian doll ComplexType in ComplexType
+
+### Source XSD
+
+@todo
+
+### Default settings output
+
+@todo
+
+### Legacy settings output
+
+@todo
 
 ## SimpleType
 
 ## `<xsd:restriction>` in SimpleType
 
 Type restrictions are not implemented yet. They might be in the future but
-they will require extensive 
+they will require extensive genereted guard code which is out of scope right
+now.
 
 ## `<xsd:enum>` in SimpleType
 
@@ -196,10 +304,10 @@ Remote URI resource fetching is not implemented yet. It is planned.
 When the namespace resource URI is a local file, it will be fetched and read
 as an XSD file.
 
-### `<xsd:import/>`
+### `<xsd:import/>` element handling
 
-`<xsd:import/>` are handled and will import the given namespace at the parent
-node level, and make it accessible to all parent node children.
+`<xsd:import/>` are handled and will import the given namespace at its direct
+parent node level, and make it accessible to children.
 
 `schemaLocation` attribute if present will override the namespace URI for
 resource fetching. Hence you can import a remote URI namespace while fetching
@@ -207,7 +315,10 @@ the content from a local file.
 
 ## `<xsd:sequence/>` and class properties
 
-`<xsd:element/>` found in `<xsd:sequence/>` will spawn  
+`<xsd:element/>` found in `<xsd:sequence/>` will spawn the class properties.
+
+@todo explain type=foo vs complexType
+@todo explain property russian doll type naming
 
 ## Collections
 
@@ -246,19 +357,20 @@ be made nullable.
 `nillable` attribute in `<xsd:sequence><xsd:element>` will make the
 property nullable. This takes precedence over the `minOccurs` parameter.
 
-`nilable` is ignored for collection, an empty collection will always be
+`nillable` is ignored for collection, an empty collection will always be
 created no matter it is nullable or not.
 
 ## Property shadowing
 
-When a type `class A { int $c }` is extended by some type `class B { int $c }`
-which redefine an existing property, multiple scenarios may occur.
+When a type `class A { int $c }` is extended by some type
+`class B extends A { int $c }` which redefine an existing property, multiple
+scenarios may occur:
 
 1. If the constructor property promotion is enabled, the property in the
    `B` type will be ignored, and type specialization will be lost. This
    is mandatory otherwise PHP will detect the property redefinition and
    cause a crash when compiling the code.
-   Note that when the property are private, the constructor promoted
+   Note that when the properties are private, the constructor promoted
    property will remain defined.
 
 2. If the properties are normal properties defined at the class level,
@@ -327,7 +439,7 @@ This behaviour has no related configuration options.
 
 # Usage
 
-The `MakinaCorpus\SoapGenerator\Generator` class is a method-chaining based
+The `MakinaCorpus\XsdGen\Generator` class is a method-chaining based
 configuration builder and runner.
 
 Here a simple working example from the unit tests:
@@ -335,7 +447,7 @@ Here a simple working example from the unit tests:
 ```php
 (new Generator())
     ->defaultDirectory(__DIR__ . '/Generated')
-    ->defaultNamespace('MakinaCorpus\\SoapGenerator\\Tests\\Generated')
+    ->defaultNamespace('MakinaCorpus\\XsdGen\\Tests\\Generated')
     ->namespace('http://schemas.makina-corpus.com/testing/common/1.0', 'MakinaCorpus\\Common')
     ->propertyGetter(true)
     ->propertyPromotion(true)
@@ -397,11 +509,11 @@ PHP code in order to make it fit your own conventions.
 
 # Todolist
 
- - Propagate <xsd:annotation> as PHP-doc
+ - Propagate <xsd:annotation> as PHP-doc (missing on <xsd:element>)
+ - Make \InvalidArgumentException in create() method user configurable
  - Handle enum: option for generating either PHP enum, or class with constants
  - Handle other simple types
  - Make simple type user-pluggable
- - Generate array hydrator dealing with sub-types.
  - Separate fromArray() and hydrate()
  - Write XML serializer
  - Write XML deserializer

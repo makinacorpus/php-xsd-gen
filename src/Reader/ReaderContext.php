@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace MakinaCorpus\SoapGenerator\Reader;
+namespace MakinaCorpus\XsdGen\Reader;
 
-use MakinaCorpus\SoapGenerator\Error\ReaderError;
-use MakinaCorpus\SoapGenerator\Error\ResourceCouldNotBeFoundError;
-use MakinaCorpus\SoapGenerator\Helper\Context;
-use MakinaCorpus\SoapGenerator\Type\AbstractType;
-use MakinaCorpus\SoapGenerator\Type\SimpleType;
-use MakinaCorpus\SoapGenerator\Type\TypeId;
+use MakinaCorpus\XsdGen\Error\ReaderError;
+use MakinaCorpus\XsdGen\Error\ResourceCouldNotBeFoundError;
+use MakinaCorpus\XsdGen\Helper\Context;
+use MakinaCorpus\XsdGen\Type\AbstractType;
+use MakinaCorpus\XsdGen\Type\SimpleType;
+use MakinaCorpus\XsdGen\Type\TypeId;
 
 class ReaderContext implements Context
 {

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace MakinaCorpus\SoapGenerator\Type;
+namespace MakinaCorpus\XsdGen\Type;
 
-use MakinaCorpus\SoapGenerator\Error\WriterError;
+use MakinaCorpus\XsdGen\Error\WriterError;
 
 class ComplexTypeProperty
 {

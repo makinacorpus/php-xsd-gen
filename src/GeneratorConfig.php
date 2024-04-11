@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace MakinaCorpus\SoapGenerator;
+namespace MakinaCorpus\XsdGen;
 
-use MakinaCorpus\SoapGenerator\Error\ConfigError;
+use MakinaCorpus\XsdGen\Error\ConfigError;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -27,10 +27,10 @@ use Psr\Log\LoggerInterface;
  * config:
  *     # Default namespace prefix for all generated classes.
  *     # This will be suffixed to generated namespaces.
- *     defaultNamespace: "Vendor\App\Soap"
+ *     defaultNamespace: "Vendor\App\Generated"
  *
  *     # Default PSR-4 directory for storing generated code.
- *     defaultDirectory: "src/Soap"
+ *     defaultDirectory: "src/Generated"
  *
  *     # PHP namespace directory map.
  *     # Keys are fully qualified namespaces, values are folders (absolute or relative).
@@ -38,7 +38,7 @@ use Psr\Log\LoggerInterface;
  *         "App\Vendor\Foo": "src/Foo"
  *
  *     # XML namespaces to PHP namespaces.
- *     # Keys are SOAP complete namespaces, values are full qualified PHP namespaces.
+ *     # Keys are XSD complete namespaces, values are full qualified PHP namespaces.
  *     namespaces:
  *         "https://vendor.com/foo": "App\Vendor\Foo"
  *
@@ -130,7 +130,7 @@ class GeneratorConfig
 
     public function __construct(
         ?string $defaultNamespace = null,
-        string $defaultDirectory = 'src/Soap',
+        string $defaultDirectory = 'src/Generated',
         /** @var array<string,string|null> */
         private readonly array $namespaceMap = [],
         /** @var array<string,string> */

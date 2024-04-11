@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace MakinaCorpus\SoapGenerator\Tests;
+namespace MakinaCorpus\XsdGen\Tests;
 
-use MakinaCorpus\SoapGenerator\Generator;
-use MakinaCorpus\SoapGenerator\Helper\EchoLogger;
+use MakinaCorpus\XsdGen\Generator;
+use MakinaCorpus\XsdGen\Helper\EchoLogger;
 use PHPUnit\Framework\TestCase;
 
 class CollectionTest extends TestCase
@@ -14,7 +14,7 @@ class CollectionTest extends TestCase
     {
         (new Generator())
             ->defaultDirectory(__DIR__ . '/Generated')
-            ->defaultNamespace('MakinaCorpus\\SoapGenerator\\Tests\\Generated')
+            ->defaultNamespace('MakinaCorpus\\XsdGen\\Tests\\Generated')
             ->namespace('https://schemas.makina-corpus.com/testing', 'Defaults')
             ->logger(new EchoLogger())
             ->file(__DIR__ . '/resources/collection.xsd')
@@ -28,7 +28,7 @@ class CollectionTest extends TestCase
     {
         (new Generator())
             ->defaultDirectory(__DIR__ . '/Generated')
-            ->defaultNamespace('MakinaCorpus\\SoapGenerator\\Tests\\Generated')
+            ->defaultNamespace('MakinaCorpus\\XsdGen\\Tests\\Generated')
             ->namespace('https://schemas.makina-corpus.com/testing', 'Legacy')
             ->propertyGetter(true)
             ->propertyPromotion(false)

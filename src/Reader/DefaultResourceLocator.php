@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace MakinaCorpus\SoapGenerator\Reader;
+namespace MakinaCorpus\XsdGen\Reader;
 
-use MakinaCorpus\SoapGenerator\Error\ResourceCouldNotBeFoundError;
+use MakinaCorpus\XsdGen\Error\ResourceCouldNotBeFoundError;
 
 class DefaultResourceLocator implements ResourceLocator
 {

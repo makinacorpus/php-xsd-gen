@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace MakinaCorpus\SoapGenerator\Writer;
+namespace MakinaCorpus\XsdGen\Writer;
 
-use MakinaCorpus\SoapGenerator\GeneratorConfig;
-use MakinaCorpus\SoapGenerator\Helper\Context;
-use MakinaCorpus\SoapGenerator\Helper\ContextTrait;
-use MakinaCorpus\SoapGenerator\Reader\TypeRegistry;
-use MakinaCorpus\SoapGenerator\Type\AbstractType;
-use MakinaCorpus\SoapGenerator\Type\SimpleType;
-use MakinaCorpus\SoapGenerator\Type\TypeId;
+use MakinaCorpus\XsdGen\GeneratorConfig;
+use MakinaCorpus\XsdGen\Helper\Context;
+use MakinaCorpus\XsdGen\Helper\ContextTrait;
+use MakinaCorpus\XsdGen\Reader\TypeRegistry;
+use MakinaCorpus\XsdGen\Type\AbstractType;
+use MakinaCorpus\XsdGen\Type\SimpleType;
+use MakinaCorpus\XsdGen\Type\TypeId;
 use Psr\Log\LoggerInterface;
 
 class WriterContext implements Context

@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace MakinaCorpus\SoapGenerator;
+namespace MakinaCorpus\XsdGen;
 
-use MakinaCorpus\SoapGenerator\Helper\AbstractGenerator;
-use MakinaCorpus\SoapGenerator\Helper\GeneratorItem;
-use MakinaCorpus\SoapGenerator\Reader\GlobalContext;
-use MakinaCorpus\SoapGenerator\Reader\ReaderContext;
-use MakinaCorpus\SoapGenerator\Reader\WsdlReader;
+use MakinaCorpus\XsdGen\Helper\AbstractGenerator;
+use MakinaCorpus\XsdGen\Helper\GeneratorItem;
+use MakinaCorpus\XsdGen\Reader\GlobalContext;
+use MakinaCorpus\XsdGen\Reader\ReaderContext;
+use MakinaCorpus\XsdGen\Reader\WsdlReader;
 
 class Generator extends AbstractGenerator
 {

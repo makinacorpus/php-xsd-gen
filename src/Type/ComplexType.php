@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace MakinaCorpus\SoapGenerator\Type;
+namespace MakinaCorpus\XsdGen\Type;
 
-use MakinaCorpus\SoapGenerator\Error\ReaderError;
+use MakinaCorpus\XsdGen\Error\ReaderError;
 
 class ComplexType extends AbstractType
 {

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace MakinaCorpus\SoapGenerator\Helper;
+namespace MakinaCorpus\XsdGen\Helper;
 
-use MakinaCorpus\SoapGenerator\Generator;
+use MakinaCorpus\XsdGen\Generator;
 
 class GeneratorItem extends AbstractGenerator
 {

@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace MakinaCorpus\SoapGenerator\Tests;
+namespace MakinaCorpus\XsdGen\Tests;
 
-use MakinaCorpus\SoapGenerator\Generator;
-use MakinaCorpus\SoapGenerator\Helper\EchoLogger;
-use MakinaCorpus\SoapGenerator\Tests\Generated\Defaults;
-use MakinaCorpus\SoapGenerator\Tests\Generated\Legacy;
+use MakinaCorpus\XsdGen\Generator;
+use MakinaCorpus\XsdGen\Helper\EchoLogger;
+use MakinaCorpus\XsdGen\Tests\Generated\Defaults;
+use MakinaCorpus\XsdGen\Tests\Generated\Legacy;
 use PHPUnit\Framework\TestCase;
 
 class InheritanceTest extends TestCase
@@ -16,7 +16,7 @@ class InheritanceTest extends TestCase
     {
         (new Generator())
             ->defaultDirectory(__DIR__ . '/Generated')
-            ->defaultNamespace('MakinaCorpus\\SoapGenerator\\Tests\\Generated')
+            ->defaultNamespace('MakinaCorpus\\XsdGen\\Tests\\Generated')
             ->namespace('https://schemas.makina-corpus.com/testing', 'Defaults')
             ->logger(new EchoLogger())
             ->file(__DIR__ . '/resources/inheritance.xsd')
@@ -55,7 +55,7 @@ class InheritanceTest extends TestCase
     {
         (new Generator())
             ->defaultDirectory(__DIR__ . '/Generated')
-            ->defaultNamespace('MakinaCorpus\\SoapGenerator\\Tests\\Generated')
+            ->defaultNamespace('MakinaCorpus\\XsdGen\\Tests\\Generated')
             ->namespace('https://schemas.makina-corpus.com/testing', 'Legacy')
             ->propertyGetter(true)
             ->propertyPromotion(false)

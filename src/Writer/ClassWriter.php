@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace MakinaCorpus\SoapGenerator\Writer;
+namespace MakinaCorpus\XsdGen\Writer;
 
-use MakinaCorpus\SoapGenerator\Error\WriterError;
-use MakinaCorpus\SoapGenerator\Type\ComplexType;
-use MakinaCorpus\SoapGenerator\Type\ComplexTypeProperty;
+use MakinaCorpus\XsdGen\Error\WriterError;
+use MakinaCorpus\XsdGen\Type\ComplexType;
+use MakinaCorpus\XsdGen\Type\ComplexTypeProperty;
 use PhpParser\Builder;
 use PhpParser\BuilderFactory;
 use PhpParser\Modifiers;

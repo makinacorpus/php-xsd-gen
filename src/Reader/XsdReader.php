@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace MakinaCorpus\SoapGenerator\Reader;
+namespace MakinaCorpus\XsdGen\Reader;
 
-use MakinaCorpus\SoapGenerator\Type\AbstractType;
-use MakinaCorpus\SoapGenerator\Type\ComplexType;
-use MakinaCorpus\SoapGenerator\Type\ComplexTypeProperty;
-use MakinaCorpus\SoapGenerator\Type\SimpleType;
+use MakinaCorpus\XsdGen\Type\AbstractType;
+use MakinaCorpus\XsdGen\Type\ComplexType;
+use MakinaCorpus\XsdGen\Type\ComplexTypeProperty;
+use MakinaCorpus\XsdGen\Type\SimpleType;
 
 class XsdReader extends AbstractReader
 {

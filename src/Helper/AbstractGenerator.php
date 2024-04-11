@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace MakinaCorpus\SoapGenerator\Helper;
+namespace MakinaCorpus\XsdGen\Helper;
 
+use MakinaCorpus\XsdGen\GeneratorConfig;
 use Psr\Log\LoggerInterface;
-use MakinaCorpus\SoapGenerator\GeneratorConfig;
 
 /**
  * @todo

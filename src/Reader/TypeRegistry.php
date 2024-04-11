@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace MakinaCorpus\SoapGenerator\Reader;
+namespace MakinaCorpus\XsdGen\Reader;
 
-use MakinaCorpus\SoapGenerator\Error\ReaderError;
-use MakinaCorpus\SoapGenerator\Error\TypeDoesNotExistError;
-use MakinaCorpus\SoapGenerator\GeneratorConfig;
-use MakinaCorpus\SoapGenerator\Type\AbstractType;
-use MakinaCorpus\SoapGenerator\Type\TypeId;
+use MakinaCorpus\XsdGen\Error\ReaderError;
+use MakinaCorpus\XsdGen\Error\TypeDoesNotExistError;
+use MakinaCorpus\XsdGen\GeneratorConfig;
+use MakinaCorpus\XsdGen\Type\AbstractType;
+use MakinaCorpus\XsdGen\Type\TypeId;
 
 class TypeRegistry
 {

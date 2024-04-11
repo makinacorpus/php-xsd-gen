@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
-namespace MakinaCorpus\SoapGenerator\Reader;
+namespace MakinaCorpus\XsdGen\Reader;
 
-use MakinaCorpus\SoapGenerator\GeneratorConfig;
-use MakinaCorpus\SoapGenerator\Error\ReaderError;
-use MakinaCorpus\SoapGenerator\Helper\Context;
-use MakinaCorpus\SoapGenerator\Helper\ContextTrait;
-use MakinaCorpus\SoapGenerator\Type\AbstractType;
-use MakinaCorpus\SoapGenerator\Type\SimpleType;
-use MakinaCorpus\SoapGenerator\Type\TypeId;
-use MakinaCorpus\SoapGenerator\Type\TypeStub;
-use MakinaCorpus\SoapGenerator\Writer\Writer;
+use MakinaCorpus\XsdGen\GeneratorConfig;
+use MakinaCorpus\XsdGen\Error\ReaderError;
+use MakinaCorpus\XsdGen\Helper\Context;
+use MakinaCorpus\XsdGen\Helper\ContextTrait;
+use MakinaCorpus\XsdGen\Type\AbstractType;
+use MakinaCorpus\XsdGen\Type\SimpleType;
+use MakinaCorpus\XsdGen\Type\TypeId;
+use MakinaCorpus\XsdGen\Type\TypeStub;
+use MakinaCorpus\XsdGen\Writer\Writer;
 use Psr\Log\LoggerInterface;
 
 class GlobalContext implements Context, ResourceLocator
