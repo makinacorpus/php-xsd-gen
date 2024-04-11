@@ -78,7 +78,7 @@ class ClassWriter
                 // @see Writer::resolveInheritanceProps() for a more detailed
                 // explanation.
                 if (!$propertyIsShadowed || $context->config->propertyPromotion) {
-                    $ctorStmt->addParam($factory->param($propName)->setType($prop->getPhpType()));
+                    $ctorStmt->addParam($this->createParam($context, $propName, $prop->getPhpType(), '/** Inherited property. */'));
                 }
                 $parentCtorArgs[$propName] = new Node\Expr\Variable($propName);
 
@@ -154,21 +154,10 @@ class ClassWriter
                     //    first if.
                     ->addStmts([
                         new Node\Stmt\If_(
-                            new Node\Expr\Instanceof_(
-                                $factory->var('values'),
-                                new Node\Name('self'),
-                            ),
-                            [
-                                'stmts' => [
-                                    new Node\Stmt\Return_(
-                                        new Node\Expr\Variable('values')
-                                    )
-                                ],
-                            ],
+                            new Node\Expr\Instanceof_($factory->var('values'), new Node\Name('self')),
+                            ['stmts' => [new Node\Stmt\Return_($factory->var('values'))]],
                         ),
-                        new Node\Stmt\Return_(
-                            $factory->new('self', $arrayConstructorArgs)
-                        ),
+                        new Node\Stmt\Return_($factory->new('self', $arrayConstructorArgs)),
                     ])
             );
         }
@@ -192,17 +181,46 @@ class ClassWriter
                     EOT
                 )
                 ->setReturnType('array')
-                ->addStmt(
-                    new Node\Stmt\Return_(
-                        new Node\Expr\Array_(
-                            $metaArrayValues,
-                        ),
-                    )
-                )
+                ->addStmt(new Node\Stmt\Return_(new Node\Expr\Array_($metaArrayValues)))
         );
 
         foreach ($uses->getAllUse() as $importedName) {
             $namespaceStmt->addStmt($factory->use($importedName));
+        }
+
+        if (!$parentPhpName) {
+            $classStmt->addStmt(
+                $factory
+                    ->method('notNull')
+                    ->makeStatic()
+                    ->makeProtected()
+                    ->setDocComment(
+                        <<<EOT
+                        /**
+                         * @internal For create() method validation.
+                         */
+                        EOT
+                    )
+                    ->addParam($factory->param('property')->setType('string'))
+                    ->setReturnType('mixed')
+                    ->addStmt(
+                        new Node\Expr\Throw_(
+                            $factory->new(
+                                '\\' . \InvalidArgumentException::class,
+                                [
+                                    $factory->funcCall(
+                                        '\\sprintf',
+                                        [
+                                            $factory->val('%s::\$%s cannot be null'),
+                                            new Node\Expr\ClassConstFetch(new Node\Name('static'), 'class'),
+                                            $factory->var('property'),
+                                        ],
+                                    )
+                                ],
+                            ),
+                        ),
+                    ),
+            );
         }
 
         // Finalize class.
@@ -236,12 +254,7 @@ class ClassWriter
         } else if ($prop->nullable) {
             $defaultExpr = $factory->val(null);
         } else {
-            $defaultExpr = new Node\Expr\Throw_(
-                $factory->new(
-                    '\\' . \InvalidArgumentException::class,
-                    [$factory->val(\sprintf('%s::\$%s property cannot be null', $classPhpType, $propName))]
-                ),
-            );
+            $defaultExpr = $factory->staticCall('self', 'notNull', [$factory->val($propName)]);
         }
 
         $arrayFetchExpr = new Node\Expr\ArrayDimFetch(
@@ -264,6 +277,46 @@ class ClassWriter
         }
 
         return new Node\Expr\BinaryOp\Coalesce($arrayFetchExpr, $defaultExpr);
+    }
+
+    /**
+     * Create parameter.
+     */
+    private function createParam(
+        WriterContext $context,
+        string $name,
+        string $phpType,
+        ?string $phpDocStr = null,
+        bool $promoted = false,
+        ?bool $readonly = null,
+        ?bool $public = null,
+    ): Node {
+        $public ??= $context->config->propertyPublic;
+        $readonly ??= $context->config->propertyReadonly;
+
+        $flags = 0;
+        if ($promoted) {
+            if ($public) {
+                $flags |= Modifiers::PUBLIC;
+            } else {
+                $flags |= Modifiers::PRIVATE;
+            }
+            if ($readonly) {
+                $flags |= Modifiers::READONLY;
+            }
+        }
+
+        $attributes = [];
+        if ($phpDocStr) {
+            $attributes['comments'][] = new Doc($phpDocStr);
+        }
+
+        return new Node\Param(
+            attributes: $attributes,
+            flags: $flags,
+            type: new Node\Identifier($phpType),
+            var: new Node\Expr\Variable($name),
+        );
     }
 
     /**
@@ -312,28 +365,16 @@ class ClassWriter
         }
 
         if ($context->config->propertyPromotion) {
-            $flags = 0;
-            if ($context->config->propertyPublic) {
-                $flags |= Modifiers::PUBLIC;
-            } else {
-                $flags |= Modifiers::PRIVATE;
-            }
-            if ($context->config->propertyReadonly) {
-                $flags |= Modifiers::READONLY;
-            }
-
-            $attributes = [];
-            if ($propDocStr) {
-                $attributes['comments'][] = new Doc($propDocStr);
-            }
-
             $ctorStmt->addParam(
-                new Node\Param(
-                    attributes: $attributes,
-                    flags: $flags,
-                    type: new Node\Identifier($phpType),
-                    var: $factory->var($propName),
-                )
+                $this->createParam(
+                    $context,
+                    $propName,
+                    $phpType,
+                    $propDocStr,
+                    true,
+                    $context->config->propertyReadonly,
+                    $context->config->propertyPublic,
+                ),
             );
         } else {
             $propStmt = $factory->property($propName);
@@ -353,11 +394,7 @@ class ClassWriter
             $classStmt->addStmt($propStmt);
 
             // Add property to constructor statement.
-            $ctorStmt->addParam(
-                $factory
-                    ->param($propName)
-                    ->setType($phpType)
-            );
+            $ctorStmt->addParam($this->createParam($context, $propName, $phpType));
 
             $ctorStmt->addStmt(
                 new Node\Expr\Assign(

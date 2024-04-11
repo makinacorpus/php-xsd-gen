@@ -85,7 +85,7 @@ use Psr\Log\LoggerInterface;
  *
  *     # Use public properties when possible.
  *     # Default is true.
- *     property_public: true
+ *     property_public: false
  *
  *     # Make properties being readonly when possible.
  *     # Default is false.
@@ -141,9 +141,9 @@ class GeneratorConfig
         public readonly bool $errorWhenTypeOverride = false,
         public readonly bool $propertyCamelCase = true,
         public readonly bool $propertyDefaults = true,
-        public readonly bool $propertyGetters = false,
-        public readonly bool $propertyPromotion = true,
-        public readonly bool $propertyPublic = true,
+        public readonly bool $propertyGetters = true,
+        public readonly bool $propertyPromotion = false,
+        public readonly bool $propertyPublic = false,
         public readonly bool $propertyReadonly = true,
         bool $propertySetters = false,
         public readonly ?LoggerInterface $logger = null,

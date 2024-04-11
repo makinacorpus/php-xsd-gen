@@ -1,36 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="https://schemas.makina-corpus.com/testing/inheritance" targetNamespace="https://schemas.makina-corpus.com/testing/inheritance" elementFormDefault="unqualified" attributeFormDefault="unqualified">
-  <xsd:simpleType name="SampleCodifiedStr">
-    <xsd:restriction base="xsd:string">
-      <xsd:minLength value="1" />
-    </xsd:restriction>
-  </xsd:simpleType>
-  <xsd:complexType name="FrenchAddressWithPhone">
+  <xsd:complexType name="AddressAndPhone">
     <xsd:annotation>
       <xsd:documentation>Uses "xsd:extension" and add properties.</xsd:documentation>
     </xsd:annotation>
     <xsd:complexContent>
-      <xsd:extension base="FrenchAddress">
+      <xsd:extension base="Address">
         <xsd:sequence>
-          <xsd:element name="PhoneNumber" type="xsd:string" minOccurs="0"></xsd:element>
-        </xsd:sequence>
-      </xsd:extension>
-    </xsd:complexContent>
-  </xsd:complexType>
-  <xsd:complexType name="FrenchAddress">
-    <xsd:annotation>
-      <xsd:documentation>Uses "xsd:restriction" to change existing properties.</xsd:documentation>
-    </xsd:annotation>
-    <xsd:complexContent>
-      <xsd:restriction base="Address">
-        <xsd:sequence>
-          <xsd:element name="Country" type="xsd:string" minOccurs="1">
+          <xsd:element name="PhoneNumber" type="xsd:string" minOccurs="0">
             <xsd:annotation>
-              <xsd:documentation>Alters cardinality.</xsd:documentation>
+              <xsd:documentation>Additional property on extended type.</xsd:documentation>
             </xsd:annotation>
           </xsd:element>
         </xsd:sequence>
-      </xsd:restriction>
+      </xsd:extension>
     </xsd:complexContent>
   </xsd:complexType>
   <xsd:complexType name="Address">
@@ -38,21 +21,82 @@
       <xsd:documentation>Some random address</xsd:documentation>
     </xsd:annotation>
     <xsd:sequence>
-      <xsd:element name="Street" type="xsd:string" minOccurs="1">
+      <xsd:element name="AddressLine" type="xsd:string" minOccurs="1">
         <xsd:annotation>
           <xsd:documentation>A basic "xsd:string'.</xsd:documentation>
         </xsd:annotation>
       </xsd:element>
-      <xsd:element name="City" type="foo:string" minOccurs="1" xmlns:foo="http://www.w3.org/2001/XMLSchema">
-        <xsd:annotation>
-          <xsd:documentation>This example is about shadowing "xsd" attribute with an alias.</xsd:documentation>
-        </xsd:annotation>
-      </xsd:element>
-      <xsd:element name="Country" type="xsd:string">
+      <xsd:element name="Country" type="xsd:string" minOccurs="0">
         <xsd:annotation>
           <xsd:documentation>A basic "xsd:string'.</xsd:documentation>
         </xsd:annotation>
       </xsd:element>
     </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="RussianDollExample">
+    <xsd:annotation>
+      <xsd:documentation>This class shadows properties.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="typeReference" type="Address">
+        <xsd:annotation><xsd:documentation>This is an existing complex type reference.</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="complexProperty">
+        <xsd:annotation><xsd:documentation>This is a russian doll complex type.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="arbitraryProperty" type="xsd:string">
+              <xsd:annotation><xsd:documentation>This property is inside the internal type.</xsd:documentation>
+              </xsd:annotation>
+            </xsd:element>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="ShadowedClass">
+    <xsd:annotation>
+      <xsd:documentation>This class has shadowed properties.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="shadowedCovariant" type="Address" minOccurs="1">
+        <xsd:annotation>
+          <xsd:documentation>This property is shadowed by a covariant type.</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="shadowedIncompatible" type="Address" minOccurs="1">
+        <xsd:annotation>
+          <xsd:documentation>This property is shadowed but is not compatible.</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="nonShadowedOther" type="Address">
+        <xsd:annotation>
+          <xsd:documentation>This property is not shadowed.</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="ShadowingClass">
+    <xsd:annotation>
+      <xsd:documentation>This class shadows properties.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:complexContent>
+      <xsd:restriction base="ShadowedClass">
+        <xsd:sequence>
+          <xsd:element name="shadowedCovariant" type="FrenchAddress" minOccurs="1">
+            <xsd:annotation>
+              <xsd:documentation>This property shadows the parent one, and is covariant.</xsd:documentation>
+            </xsd:annotation>
+          </xsd:element>
+          <xsd:element name="shadowedIncompatible" type="xsd:date" minOccurs="1">
+            <xsd:annotation>
+              <xsd:documentation>This property shadows the parent one, but is not covariant.</xsd:documentation>
+            </xsd:annotation>
+          </xsd:element>
+        </xsd:sequence>
+      </xsd:restriction>
+    </xsd:complexContent>
   </xsd:complexType>
 </xsd:schema>

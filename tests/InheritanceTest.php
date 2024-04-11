@@ -7,7 +7,7 @@ namespace MakinaCorpus\XsdGen\Tests;
 use MakinaCorpus\XsdGen\Generator;
 use MakinaCorpus\XsdGen\Helper\EchoLogger;
 use MakinaCorpus\XsdGen\Tests\Generated\Defaults;
-use MakinaCorpus\XsdGen\Tests\Generated\Legacy;
+use MakinaCorpus\XsdGen\Tests\Generated\Modern;
 use PHPUnit\Framework\TestCase;
 
 class InheritanceTest extends TestCase
@@ -23,72 +23,65 @@ class InheritanceTest extends TestCase
             ->generate()
         ;
 
-
-        $instance = new Defaults\Inheritance\FrenchAddressWithPhone(street: 'foo', city: 'bar', country: 'baz', phoneNumber: null);
-        self::assertInstanceOf(Defaults\Inheritance\FrenchAddress::class, $instance);
+        $instance = new Defaults\Inheritance\AddressAndPhone(addressLine: 'foo', country: 'bar', phoneNumber: null);
+        self::assertInstanceOf(Defaults\Inheritance\AddressAndPhone::class, $instance);
         self::assertInstanceOf(Defaults\Inheritance\Address::class, $instance);
 
-        self::assertSame('foo', $instance->street);
-        self::assertSame('bar', $instance->city);
-        self::assertSame('baz', $instance->country);
-        self::assertNull($instance->phoneNumber);
+        self::assertSame('foo', $instance->getAddressLine());
+        self::assertSame('bar', $instance->getCountry());
+        self::assertNull($instance->getPhoneNumber());
 
         self::assertSame(
             [
-                'street' => ['string', false],
-                'city' => ['string', false],
+                'addressLine' => ['string', false],
                 'country' => ['string', false],
                 'phoneNumber' => ['string', false],
             ],
-            Defaults\Inheritance\FrenchAddressWithPhone::propertyMetadata()
+            Defaults\Inheritance\AddressAndPhone::propertyMetadata()
         );
 
-        $other = Defaults\Inheritance\FrenchAddressWithPhone::create([
-            'Street' => 'foo',
-            'City' => 'bar',
-            'Country' => 'baz',
+        $other = Defaults\Inheritance\AddressAndPhone::create([
+            'AddressLine' => 'foo',
+            'Country' => 'bar',
         ]);
         self::assertEquals($instance, $other);
     }
 
-    public function testInheritanceLegacy(): void
+    public function testInheritanceModern(): void
     {
         (new Generator())
             ->defaultDirectory(__DIR__ . '/Generated')
             ->defaultNamespace('MakinaCorpus\\XsdGen\\Tests\\Generated')
-            ->namespace('https://schemas.makina-corpus.com/testing', 'Legacy')
-            ->propertyGetter(true)
-            ->propertyPromotion(false)
-            ->propertyPublic(false)
-            ->propertyReadonly(false)
+            ->namespace('https://schemas.makina-corpus.com/testing', 'Modern')
+            ->propertyGetter(false)
+            ->propertyPromotion(true)
+            ->propertyPublic(true)
+            ->propertyReadonly(true)
             ->logger(new EchoLogger())
             ->file(__DIR__ . '/resources/inheritance.xsd')
             ->generate()
         ;
 
-        $instance = new Legacy\Inheritance\FrenchAddressWithPhone(street: 'foo', city: 'bar', country: 'baz', phoneNumber: null);
-        self::assertInstanceOf(Legacy\Inheritance\FrenchAddress::class, $instance);
-        self::assertInstanceOf(Legacy\Inheritance\Address::class, $instance);
+        $instance = new Modern\Inheritance\AddressAndPhone(addressLine: 'foo', country: 'bar', phoneNumber: null);
+        self::assertInstanceOf(Modern\Inheritance\AddressAndPhone::class, $instance);
+        self::assertInstanceOf(Modern\Inheritance\Address::class, $instance);
 
-        self::assertSame('foo', $instance->getStreet());
-        self::assertSame('bar', $instance->getCity());
-        self::assertSame('baz', $instance->getCountry());
-        self::assertNull($instance->getPhoneNumber());
+        self::assertSame('foo', $instance->addressLine);
+        self::assertSame('bar', $instance->country);
+        self::assertNull($instance->phoneNumber);
 
         self::assertSame(
             [
-                'street' => ['string', false],
-                'city' => ['string', false],
+                'addressLine' => ['string', false],
                 'country' => ['string', false],
                 'phoneNumber' => ['string', false],
             ],
-            Legacy\Inheritance\FrenchAddressWithPhone::propertyMetadata()
+            Modern\Inheritance\AddressAndPhone::propertyMetadata()
         );
 
-        $other = Legacy\Inheritance\FrenchAddressWithPhone::create([
-            'Street' => 'foo',
-            'City' => 'bar',
-            'Country' => 'baz',
+        $other = Modern\Inheritance\AddressAndPhone::create([
+            'AddressLine' => 'foo',
+            'Country' => 'bar',
         ]);
         self::assertEquals($instance, $other);
     }

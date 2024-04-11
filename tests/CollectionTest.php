@@ -24,16 +24,16 @@ class CollectionTest extends TestCase
         self::expectNotToPerformAssertions();
     }
 
-    public function testCollectionLegacy(): void
+    public function testCollectionModern(): void
     {
         (new Generator())
             ->defaultDirectory(__DIR__ . '/Generated')
             ->defaultNamespace('MakinaCorpus\\XsdGen\\Tests\\Generated')
-            ->namespace('https://schemas.makina-corpus.com/testing', 'Legacy')
-            ->propertyGetter(true)
-            ->propertyPromotion(false)
-            ->propertyPublic(false)
-            ->propertyReadonly(false)
+            ->namespace('https://schemas.makina-corpus.com/testing', 'Modern')
+            ->propertyGetter(false)
+            ->propertyPromotion(true)
+            ->propertyPublic(true)
+            ->propertyReadonly(true)
             ->logger(new EchoLogger())
             ->file(__DIR__ . '/resources/collection.xsd')
             ->generate()

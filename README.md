@@ -19,24 +19,24 @@ This API generates PHP classes from a given XSD schema.
   xmlns:xsd="http://www.w3.org/2001/XMLSchema"
   xmlns="https://schemas.makina-corpus.com/testing/inheritance"
   targetNamespace="https://schemas.makina-corpus.com/testing/inheritance">
-  <xsd:complexType name="Address">
+  <xsd:complexType name="ShadowedClass">
     <xsd:annotation>
-      <xsd:documentation>Some random address</xsd:documentation>
+      <xsd:documentation>This class has shadowed properties.</xsd:documentation>
     </xsd:annotation>
     <xsd:sequence>
-      <xsd:element name="Street" type="xsd:string" minOccurs="1">
+      <xsd:element name="shadowedCovariant" type="Address" minOccurs="1">
         <xsd:annotation>
-          <xsd:documentation>A basic "xsd:string'.</xsd:documentation>
+          <xsd:documentation>This property is shadowed by a covariant type.</xsd:documentation>
         </xsd:annotation>
       </xsd:element>
-      <xsd:element name="City" type="foo:string" minOccurs="1" xmlns:foo="http://www.w3.org/2001/XMLSchema">
+      <xsd:element name="shadowedIncompatible" type="Address" minOccurs="1">
         <xsd:annotation>
-          <xsd:documentation>This example is about shadowing "xsd" attribute with an alias.</xsd:documentation>
+          <xsd:documentation>This property is shadowed but is not compatible.</xsd:documentation>
         </xsd:annotation>
       </xsd:element>
-      <xsd:element name="Country" type="xsd:string">
+      <xsd:element name="nonShadowedOther" type="Address">
         <xsd:annotation>
-          <xsd:documentation>A basic "xsd:string'.</xsd:documentation>
+          <xsd:documentation>This property is not shadowed.</xsd:documentation>
         </xsd:annotation>
       </xsd:element>
     </xsd:sequence>
@@ -51,45 +51,75 @@ This API generates PHP classes from a given XSD schema.
 
 namespace MakinaCorpus\XsdGen\Tests\Generated\Defaults\Inheritance;
 
-class Address
+class ShadowedClass
 {
     /**
-     * @internal Hydrator for XML or array exchange.
+     * This property is shadowed by a covariant type.
      */
-    public static function create(array|object $values): self
-    {
-        if ($values instanceof self) {
-            return $values;
-        }
+    private readonly Address $shadowedCovariant;
 
-        return new self(
-            street: $values['Street'] ?? throw new \InvalidArgumentException('Address::\$street property cannot be null'),
-            city: $values['City'] ?? throw new \InvalidArgumentException('Address::\$city property cannot be null'),
-            country: $values['Country'] ?? throw new \InvalidArgumentException('Address::\$country property cannot be null'),
-        );
-    }
+    /**
+     * This property is shadowed but is not compatible.
+     */
+    private readonly Address $shadowedIncompatible;
+
+    /**
+     * This property is not shadowed.
+     */
+    private readonly Address $nonShadowedOther;
 
     public function __construct(
-        /**
-         * A basic "xsd:string'.
-         */
-        public readonly string $street,
-        /**
-         * This example is about shadowing "xsd" attribute with an alias.
-         */
-        public readonly string $city,
-        /**
-         * A basic "xsd:string'.
-         */
-        public readonly string $country
+        Address $shadowedCovariant,
+        Address $shadowedIncompatible,
+        Address $nonShadowedOther
     ) {
+        $this->shadowedCovariant = $shadowedCovariant;
+        $this->shadowedIncompatible = $shadowedIncompatible;
+        $this->nonShadowedOther = $nonShadowedOther;
+    }
+
+    public function getShadowedCovariant(): Address
+    {
+        return $this->shadowedCovariant;
+    }
+
+    public function getShadowedIncompatible(): Address
+    {
+        return $this->shadowedIncompatible;
+    }
+
+    public function getNonShadowedOther(): Address
+    {
+        return $this->nonShadowedOther;
     }
 }
 ```
 
-### Legacy settings output
+### Modern settings output
 
-@todo
+```
+<?php
+
+namespace MakinaCorpus\XsdGen\Tests\Generated\Legacy\Inheritance;
+
+class ShadowedClass
+{
+    public function __construct(
+        /**
+         * This property is shadowed by a covariant type.
+         */
+        public readonly Address $shadowedCovariant,
+        /**
+         * This property is shadowed but is not compatible.
+         */
+        public readonly Address $shadowedIncompatible,
+        /**
+         * This property is not shadowed.
+         */
+        public readonly Address $nonShadowedOther
+    ) {}
+}
+```
 
 ## `<xsd:restriction>` in ComplexType
 
@@ -113,16 +143,21 @@ is fulfilled, the child class property will silentely removed.
 
 ```xml
   <!-- ... -->
-  <xsd:complexType name="FrenchAddress">
+  <xsd:complexType name="ShadowingClass">
     <xsd:annotation>
-      <xsd:documentation>Uses "xsd:restriction" to change existing properties.</xsd:documentation>
+      <xsd:documentation>This class shadows properties.</xsd:documentation>
     </xsd:annotation>
     <xsd:complexContent>
-      <xsd:restriction base="Address">
+      <xsd:restriction base="ShadowedClass">
         <xsd:sequence>
-          <xsd:element name="Country" type="xsd:string" minOccurs="1">
+          <xsd:element name="shadowedCovariant" type="FrenchAddress" minOccurs="1">
             <xsd:annotation>
-              <xsd:documentation>Alters cardinality.</xsd:documentation>
+              <xsd:documentation>This property shadows the parent one, and is covariant.</xsd:documentation>
+            </xsd:annotation>
+          </xsd:element>
+          <xsd:element name="shadowedIncompatible" type="xsd:date" minOccurs="1">
+            <xsd:annotation>
+              <xsd:documentation>This property shadows the parent one, but is not covariant.</xsd:documentation>
             </xsd:annotation>
           </xsd:element>
         </xsd:sequence>
@@ -134,42 +169,85 @@ is fulfilled, the child class property will silentely removed.
 ### Default settings output
 
 ```php
-<?php
-
-namespace MakinaCorpus\XsdGen\Tests\Generated\Defaults\Inheritance;
-
-class FrenchAddress extends Address
+class ShadowingClass extends ShadowedClass
 {
     /**
-     * @internal Hydrator for XML or array exchange.
+     * This property shadows the parent one, and is covariant.
      */
-    public static function create(array|object $values): self
-    {
-        if ($values instanceof self) {
-            return $values;
-        }
+    private readonly FrenchAddress $shadowedCovariant;
+    /**
+     * This property shadows the parent one, but is not covariant.
+     */
+    private readonly \DateTimeImmutable $shadowedIncompatible;
 
-        return new self(
-            street: $values['Street'] ?? throw new \InvalidArgumentException('FrenchAddress::\$street property cannot be null'),
-            city: $values['City'] ?? throw new \InvalidArgumentException('FrenchAddress::\$city property cannot be null'),
-            country: $values['Country'] ?? throw new \InvalidArgumentException('FrenchAddress::\$country property cannot be null')
+    public function __construct(
+        /** Inherited property. */
+        Address $nonShadowedOther,
+        FrenchAddress $shadowedCovariant,
+        \DateTimeImmutable $shadowedIncompatible
+    ) {
+        $this->shadowedCovariant = $shadowedCovariant;
+        $this->shadowedIncompatible = $shadowedIncompatible;
+
+        parent::__construct(
+            shadowedCovariant: $shadowedCovariant,
+            shadowedIncompatible: $shadowedIncompatible,
+            nonShadowedOther: $nonShadowedOther,
         );
     }
 
-    public function __construct(string $street, string $city, string $country)
+    public function getShadowedCovariant(): FrenchAddress
     {
+        return $this->shadowedCovariant;
+    }
+
+    public function getShadowedIncompatible(): \DateTimeImmutable
+    {
+        return $this->shadowedIncompatible;
+    }
+}
+```
+
+As you can see, the private `$shadowedCovariant` and `$shadowedIncompatible`
+properties are allowed to shadow their parent definitions, which is therefore
+completely hidden now.
+
+Warning: in this example, the `$shadowedIncompatible` will cause PHP errors
+because the type is not covariant, there is no way around this.
+
+An alternative method would have been to merge classes with their parent
+definition in order to entirely drop the inheritance in the benefit of one
+huge class.
+
+### Modern settings output
+
+```php
+<?php
+
+namespace MakinaCorpus\XsdGen\Tests\Generated\Legacy\Inheritance;
+
+class ShadowingClass extends ShadowedClass
+{
+    public function __construct(
+        /** Inherited property. */
+        Address $shadowedCovariant,
+        /** Inherited property. */
+        Address $shadowedIncompatible,
+        /** Inherited property. */
+        Address $nonShadowedOther,
+    ) {
         parent::__construct(
-            street: $street,
-            city: $city,
-            country: $country,
+            shadowedCovariant: $shadowedCovariant,
+            shadowedIncompatible: $shadowedIncompatible,
+            nonShadowedOther: $nonShadowedOther,
         );
     }
 }
 ```
 
-### Legacy settings output
-
-@todo
+As you can see, the private `$shadowedCovariant` and `$shadowedIncompatible`
+properties are not redefined because their are public and it would cause
+fatal errors in case of incompatible types.
 
 ## `<xsd:extension>` in ComplexType
 
@@ -197,76 +275,315 @@ generated PHP output.
 
 ### Default settings output
 
+Parent class:
+
+```php
+class Address
+{
+    /**
+     * A basic "xsd:string'.
+     */
+    private readonly string $addressLine;
+
+    /**
+     * A basic "xsd:string'.
+     */
+    private readonly ?string $country;
+
+    public function __construct(
+        string $addressLine,
+        ?string $country,
+    ) {
+        $this->addressLine = $addressLine;
+        $this->country = $country;
+    }
+
+    public function getAddressLine(): string
+    {
+        return $this->addressLine;
+    }
+
+    public function getCountry(): ?string
+    {
+        return $this->country;
+    }
+}
+```
+
+Child class:
+
 ```php
 <?php
 
 namespace MakinaCorpus\XsdGen\Tests\Generated\Defaults\Inheritance;
 
-class FrenchAddressWithPhone extends FrenchAddress
+class AddressAndPhone extends Address
 {
     /**
-     * @internal Hydrator for XML or array exchange.
+     * Additional property on extended type.
      */
-    public static function create(array|object $values): self
-    {
-        if ($values instanceof self) {
-            return $values;
-        }
+    private readonly ?string $phoneNumber;
 
-        return new self(
-            street: $values['Street'] ?? throw new \InvalidArgumentException('FrenchAddressWithPhone::\$street property cannot be null'),
-            city: $values['City'] ?? throw new \InvalidArgumentException('FrenchAddressWithPhone::\$city property cannot be null'),
-            country: $values['Country'] ?? throw new \InvalidArgumentException('FrenchAddressWithPhone::\$country property cannot be null'),
-            phoneNumber: $values['PhoneNumber'] ?? null,
+    public function __construct(
+        /** Inherited property. */
+        string $addressLine,
+        /** Inherited property. */
+        ?string $country,
+        ?string $phoneNumber,
+    ) {
+        $this->phoneNumber = $phoneNumber;
+
+        parent::__construct(
+            addressLine: $addressLine,
+            country: $country,
         );
     }
 
+    public function getPhoneNumber(): ?string
+    {
+        return $this->phoneNumber;
+    }
+}
+```
+
+### Modern settings output
+
+Parent class:
+
+```php
+<?php
+
+namespace MakinaCorpus\XsdGen\Tests\Generated\Modern\Inheritance;
+
+class Address
+{
     public function __construct(
-        string $street,
-        string $city,
-        string $country,
+        /**
+         * A basic "xsd:string'.
+         */
+        public readonly string $addressLine,
+
+        /**
+         * A basic "xsd:string'.
+         */
+        public readonly ?string $country,
+    ) {}
+}
+```
+
+Child class:
+
+```php
+<?php
+
+namespace MakinaCorpus\XsdGen\Tests\Generated\Modern\Inheritance;
+
+class AddressAndPhone extends Address
+{
+    public function __construct(
+        /** Inherited property. */
+        string $addressLine,
+
+        /** Inherited property. */
+        ?string $country,
+
+        /**
+         * Additional property on extended type.
+         */
         public readonly ?string $phoneNumber
     ) {
         parent::__construct(
-            street: $street,
-            city: $city,
+            addressLine: $addressLine,
             country: $country,
         );
     }
 }
 ```
 
-### Legacy settings output
-
-@todo
-
-## ComplexType reference in ComplexType
+## ComplexType reference versus "russian doll" property
 
 ### Source XSD
 
-@todo
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="https://schemas.makina-corpus.com/testing/inheritance" targetNamespace="https://schemas.makina-corpus.com/testing/inheritance" elementFormDefault="unqualified" attributeFormDefault="unqualified">
+  <xsd:complexType name="Address">
+    <xsd:annotation>
+      <xsd:documentation>Some random address</xsd:documentation>
+    </xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="AddressLine" type="xsd:string" minOccurs="1">
+        <xsd:annotation>
+          <xsd:documentation>A basic "xsd:string'.</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="Country" type="xsd:string" minOccurs="0">
+        <xsd:annotation>
+          <xsd:documentation>A basic "xsd:string'.</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="RussianDollExample">
+    <xsd:annotation>
+      <xsd:documentation>This class shadows properties.</xsd:documentation>
+    </xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="typeReference" type="Address">
+        <xsd:annotation><xsd:documentation>This is an existing complex type reference.</xsd:documentation>
+        </xsd:annotation>
+      </xsd:element>
+      <xsd:element name="complexProperty">
+        <xsd:annotation><xsd:documentation>This is a russian doll complex type.</xsd:documentation>
+        </xsd:annotation>
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="arbitraryProperty" type="xsd:string">
+              <xsd:annotation><xsd:documentation>This property is inside the internal type.</xsd:documentation>
+              </xsd:annotation>
+            </xsd:element>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+    </xsd:sequence>
+  </xsd:complexType>
+</xsd:schema>
+```
 
 ### Default settings output
 
-@todo
+Named complex type:
 
-### Legacy settings output
+```php
+<?php
 
-@todo
+namespace MakinaCorpus\XsdGen\Tests\Generated\Defaults\Inheritance;
 
-## Russian doll ComplexType in ComplexType
+class RussianDollExample
+{
+    /**
+     * This is an existing complex type reference.
+     */
+    private readonly Address $typeReference;
 
-### Source XSD
+    /**
+     * This is a russian doll complex type.
+     */
+    private readonly RussianDollExample_complexProperty $complexProperty;
 
-@todo
+    public function __construct(
+        Address $typeReference,
+        RussianDollExample_complexProperty $complexProperty
+    ) {
+        $this->typeReference = $typeReference;
+        $this->complexProperty = $complexProperty;
+    }
 
-### Default settings output
+    public function getTypeReference(): Address
+    {
+        return $this->typeReference;
+    }
 
-@todo
+    public function getComplexProperty(): RussianDollExample_complexProperty
+    {
+        return $this->complexProperty;
+    }
+}
+```
 
-### Legacy settings output
+Internal complex property:
 
-@todo
+```php
+<?php
+
+namespace MakinaCorpus\XsdGen\Tests\Generated\Defaults\Inheritance;
+
+class RussianDollExample_complexProperty
+{
+    /**
+     * This property is inside the internal type.
+     */
+    private readonly string $arbitraryProperty;
+
+    public function __construct(string $arbitraryProperty)
+    {
+        $this->arbitraryProperty = $arbitraryProperty;
+    }
+
+    public function getArbitraryProperty(): string
+    {
+        return $this->arbitraryProperty;
+    }
+}
+```
+
+As you can see, for the existing `Address` type, a simple property using
+the existing class is written.
+
+For the nested complex type however, a `RussianDollExample_complexProperty`
+new class is created.
+
+Nested complex properties can nest complex properties themselves. Name will
+always be `ClassName_ComplexPropertyName`.
+
+### Modern settings output
+
+Named complex type:
+
+```php
+<?php
+
+namespace MakinaCorpus\XsdGen\Tests\Generated\Defaults\Inheritance;
+
+class RussianDollExample
+{
+    /**
+     * This is an existing complex type reference.
+     */
+    private readonly Address $typeReference;
+
+    /**
+     * This is a russian doll complex type.
+     */
+    private readonly RussianDollExample_complexProperty $complexProperty;
+
+    public function __construct(
+        Address $typeReference,
+        RussianDollExample_complexProperty $complexProperty
+    ) {
+        $this->typeReference = $typeReference;
+        $this->complexProperty = $complexProperty;
+    }
+
+    public function getTypeReference(): Address
+    {
+        return $this->typeReference;
+    }
+
+    public function getComplexProperty(): RussianDollExample_complexProperty
+    {
+        return $this->complexProperty;
+    }
+}
+```
+
+Internal complex property:
+
+```php
+<?php
+
+namespace MakinaCorpus\XsdGen\Tests\Generated\Modern\Inheritance;
+
+class RussianDollExample_complexProperty
+{
+    public function __construct(
+        /**
+         * This property is inside the internal type.
+         */
+        public readonly string $arbitraryProperty
+    ) {}
+}
+```
 
 ## SimpleType
 
@@ -275,6 +592,33 @@ class FrenchAddressWithPhone extends FrenchAddress
 Type restrictions are not implemented yet. They might be in the future but
 they will require extensive genereted guard code which is out of scope right
 now.
+
+As of now, simple types will be arbitrarily replaced with PHP equivalents
+when available, the current conversion map is the following:
+
+ - `xsd:anyURI`: `string`
+ - `xsd:base64Binary`: `string`
+ - `xsd:boolean`: `bool`
+ - `xsd:date`: `\DateTimeImmutable`,
+ - `xsd:dateTime`: `\DateTimeImmutable`,
+ - `xsd:decimal `: `float`
+ - `xsd:double`: `float`
+ - `xsd:duration`: `\DateInterval`,
+ - `xsd:float`: `float`
+ - `xsd:gDay`: `int`
+ - `xsd:gMonth`: `int`
+ - `xsd:gMonthDay`: `int`
+ - `xsd:gYear`: `int`
+ - `xsd:gYearMonth`: `int`
+ - `xsd:hexBinary`: `string`
+ - `xsd:integer`: `int`
+ - `xsd:normalizedString`: `string`
+ - `xsd:NOTATION`: `string`
+ - `xsd:Qname`: `string`
+ - `xsd:string`: `string`
+ - `xsd:time`: `string`
+
+It is planned to make simple types behaviour pluggable.
 
 ## `<xsd:enum>` in SimpleType
 
@@ -286,7 +630,69 @@ Enums are not implemented yet. It is a planned feature.
 
 ### XML namespace to PHP namespace conversion
 
-@todo
+#### Default behaviour
+
+When spawning this API, you need to set two importants parameters:
+
+ - `default_namespace`: is the PSR-4 namespace prefix for all your generated
+   code, if you need to split files in more specialized namespaces, read the
+   documentation below. For example, you may set `YourVendor\YourApp\Generated`
+   in here.
+
+ - `default_directory`: is the root folder for the PSR-4 namespace you chose.
+   For example if your existing `/path/to/project/src/` folder is the root
+   for the `YourVendor\YourApp` namespace, you probably want to use
+   the `/path/to/project/src/Generated` value.
+
+Now consider the following XSD namespace:
+
+```
+https://schemas.makina-corpus.com/testing/inheritance
+```
+
+If you choose not to configure it further, this URI will be converted to
+the following namespace infix:
+
+```
+Schemas\Makina\Corpus\Com\Testing\Inheritance
+```
+
+Then the PSR-4 prefix will be applied, final class namespace will then be:
+
+```
+YourVendor\YourApp\Generated\Schemas\Makina\Corpus\Com\Testing\Inheritance`
+```
+
+#### Configuring namespaces
+
+Considering that raw namespace URI conversion to a PHP namespace is
+arbitrary and probably will not fit your need, you can choose to change
+on a per URI prefix basis the target PSR-4 namespace.
+
+Here, we could, for example, set the `namespaces` variable to the following:
+
+```yaml
+default_namespace: YourVendor\YourApp\Generated
+default_directory: /path/to/project/src/Generated
+
+namespaces:
+    "https://schemas.makina-corpus.com/testing": MakinaCorpus\Testing
+```
+
+The given URI will match, and trailing namespace remaining will simply
+be `/inheritance`. It then converts to the following fully qualifed PHP
+namespace name:
+
+```
+YourVendor\YourApp\Generated\MakinaCorpus\Testing\Inheritance`
+```
+
+Note: the namespaces you configure will always be a namespace infix,
+relative to the default PSR-4 prefix.
+
+You can set as many namespaces as you wish, they will be evuluated
+in order, consider writing starting with the most specific and ending with
+the least specific namespace URI prefix.
 
 ### `xmlns:NAMESPACE=` attribute schema parsing
 
@@ -509,6 +915,7 @@ PHP code in order to make it fit your own conventions.
 
 # Todolist
 
+ - use \Override attribute on shadowing getter and setters (make it configurable)
  - Propagate <xsd:annotation> as PHP-doc (missing on <xsd:element>)
  - Make \InvalidArgumentException in create() method user configurable
  - Handle enum: option for generating either PHP enum, or class with constants
