@@ -28,7 +28,7 @@ implementation for production projects.
 # Generated code examples
 
 Note: all examples in the following section removes some generated additional static
-that exists for object hydration and serialization purpose.
+methods that exists for object hydration and serialization purpose.
 
 ## ComplexType to PHP class
 
@@ -120,7 +120,7 @@ class ShadowedClass
 
 ### Modern settings output
 
-```
+```php
 <?php
 
 namespace MakinaCorpus\XsdGen\Tests\Generated\Legacy\Inheritance;
@@ -132,10 +132,12 @@ class ShadowedClass
          * This property is shadowed by a covariant type.
          */
         public readonly Address $shadowedCovariant,
+
         /**
          * This property is shadowed but is not compatible.
          */
         public readonly Address $shadowedIncompatible,
+
         /**
          * This property is not shadowed.
          */
@@ -556,37 +558,21 @@ Named complex type:
 ```php
 <?php
 
-namespace MakinaCorpus\XsdGen\Tests\Generated\Defaults\Inheritance;
+namespace MakinaCorpus\XsdGen\Tests\Generated\Modern\Inheritance;
 
 class RussianDollExample
 {
-    /**
-     * This is an existing complex type reference.
-     */
-    private readonly Address $typeReference;
-
-    /**
-     * This is a russian doll complex type.
-     */
-    private readonly RussianDollExample_complexProperty $complexProperty;
-
     public function __construct(
-        Address $typeReference,
-        RussianDollExample_complexProperty $complexProperty
-    ) {
-        $this->typeReference = $typeReference;
-        $this->complexProperty = $complexProperty;
-    }
+        /**
+         * This is an existing complex type reference.
+         */
+        public readonly Address $typeReference,
 
-    public function getTypeReference(): Address
-    {
-        return $this->typeReference;
-    }
-
-    public function getComplexProperty(): RussianDollExample_complexProperty
-    {
-        return $this->complexProperty;
-    }
+        /**
+         * This is a russian doll complex type.
+         */
+        public readonly RussianDollExample_complexProperty $complexProperty
+    ) {}
 }
 ```
 
@@ -1051,20 +1037,20 @@ xsd_gen:
 
 ### Readonly properties
 
-Make properties `readonly` (default is `false`):
+Make properties `readonly` (default is `true`):
 
 *In configuration*:
 
 ```yaml
 xsd_gen:
-    property_readonly: true
+    property_readonly: false
 ```
 
 *With the `Generator` class*:
 
 ```php
 (new Generator())
-    ->propertyReadonly(true)
+    ->propertyReadonly(false)
 ```
 
 ### Getters
