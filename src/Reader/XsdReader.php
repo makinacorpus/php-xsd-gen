@@ -150,7 +150,7 @@ class XsdReader extends AbstractReader
 
         $context
             ->expect('xsd:annotation', $this->annotation(...), $type)
-            ->expect('xsd:complexContent', $this->complexContent(...),  $type)
+            ->expect('xsd:complexContent', $this->complexContent(...), $type)
             ->expect('xsd:sequence', $this->sequence(...), $type)
         ;
     }
@@ -170,7 +170,7 @@ class XsdReader extends AbstractReader
 
         $context
             ->expect('xsd:extension', $this->extension(...), $type)
-            ->expect('xsd:restriction', $this->restriction(...),  $type)
+            ->expect('xsd:restriction', $this->restriction(...), $type)
         ;
     }
 

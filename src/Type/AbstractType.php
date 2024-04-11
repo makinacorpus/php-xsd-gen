@@ -22,7 +22,8 @@ abstract class AbstractType
     public function __construct(
         public readonly TypeId $id,
         public ?TypeId $extends = null,
-    ) {}
+    ) {
+    }
 
     /**
      * Set annotation (PHP doc comment).

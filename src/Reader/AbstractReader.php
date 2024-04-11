@@ -54,7 +54,7 @@ abstract class AbstractReader
     /**
      * On document element.
      */
-    protected abstract function root(ReaderContext $context): void;
+    abstract protected function root(ReaderContext $context): void;
 
     /**
      * Execute expectations on element and recurse.
@@ -69,7 +69,7 @@ abstract class AbstractReader
 
         $executed = 0;
         foreach ($expectations as $expectation) {
-            list ($match, $callback, $args) = $expectation;
+            list($match, $callback, $args) = $expectation;
             if ($this->elementIs($element, $match)) {
                 $executed++;
                 $callback($context, $element, ...$args);
